@@ -1,3 +1,10 @@
+% Solution for the Home Assignment 1.
+%
+% Student:		Danis Alukaev
+% Group:		BS19-02
+% Student ID:	19BS551
+
+
 %% ----------------- MAP GENERATION ----------------------------------------
 
 % check whether two coordinates are the same
@@ -131,16 +138,32 @@ generate_map() :-
 
 % specify positions of objects manually
 set_map() :-
-  %% b_setval(covid1, [0, 2]),
-  %% b_setval(covid2, [6, 6]),
-  %% b_setval(home, [3, 0]),
-  %% b_setval(mask, [5, 2]),
-  %% b_setval(doctor, [3, 3]).
-  b_setval(covid1, [1, 2]),
-  b_setval(covid2, [3, 0]),
-  b_setval(home, [3, 2]),
-  b_setval(mask, [1, 4]),
-  b_setval(doctor, [4, 3]).
+	b_setval(covid1, [0, 2]),
+ 	b_setval(covid2, [6, 6]),
+ 	b_setval(home, [3, 0]),
+	b_setval(mask, [5, 2]),
+	b_setval(doctor, [3, 3]).
+
+resolvable_map1_9x9() :-
+	b_setval(covid1, [0, 2]),
+ 	b_setval(covid2, [6, 6]),
+ 	b_setval(home, [3, 0]),
+	b_setval(mask, [5, 2]),
+	b_setval(doctor, [3, 3]).
+
+resolvable_map2_9x9() :-
+	b_setval(covid1, [1, 2]),
+ 	b_setval(covid2, [3, 0]),
+ 	b_setval(home, [3, 2]),
+ 	b_setval(mask, [1, 0]),
+ 	b_setval(doctor, [4, 3]).
+
+impossible_map1_9x9() :-
+	b_setval(covid1, [1, 2]),
+ 	b_setval(covid2, [3, 0]),
+ 	b_setval(home, [3, 2]),
+ 	b_setval(mask, [1, 4]),
+ 	b_setval(doctor, [4, 3]).
 
 % print postions of agent, covids, home, mask and doctor
 print_objects() :-
@@ -281,15 +304,21 @@ backtrack(Length,Path):-
 	write("Lost.").
 
 test(Length, Path) :-
-  % set dimensions of the lattice % 
-  nb_setval(grid_size, [5, 5]),
+  % set dimensions of the lattice  
+  nb_setval(grid_size, [9, 9]),
   initialize_variables(),
   
-  % either generate map randomly using generate_map()
-  % or set map manually using set_map()
-  % comment out the odd
+  % Either generate map randomly using rule generate_map()
+  %        or set map manually using rule set_map()
+  %        or use one of the prepared maps using rules resolvable_map1_9x9(), 
+  %        resolvable_map2_9x9(), impossible_map1_9x9().
+  
+  % Comment out the odd:
   % generate_map(),
-  set_map(),
+  % set_map(),
+  % resolvable_map1_9x9(), 
+  % resolvable_map2_9x9(), 
+  % impossible_map1_9x9(),
 
   print_objects(),
   backtrack(Length, Path).
