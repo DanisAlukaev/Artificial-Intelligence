@@ -7,281 +7,264 @@
 
 %% ----------------- MAP GENERATION ----------------------------------------
 
+prepare() :-
+	retractall(grid_size(_)),
+	retractall(agent(_)),
+	retractall(covid(_)),
+	retractall(home(_)),
+	retractall(mask(_)),
+	retractall(doctor(_)),
+	retractall(minimal_path(_)).
+
+
 % check whether two coordinates are the same
 is_same_position([X1, Y1], [X2, Y2]) :-
-  X1 == X2,
-  Y1 == Y2.
+	X1 == X2, Y1 == Y2.
 
 
 % yield vacant random position for covid 
-get_random_position_covid([X_random, Y_random]) :-
-  b_getval(grid_size, [X_max, Y_max]),
-  repeat,
-  random(0, X_max, X_random),
-  random(0, Y_max, Y_random),
-  b_getval(covid1, [X_covid1, Y_covid1]),
-  b_getval(covid2, [X_covid2, Y_covid2]),
-  (
-    is_same_position([X_random, Y_random], [X_covid1, Y_covid1]) ->
-      fail
-    ; is_same_position([X_random, Y_random], [X_covid2, Y_covid2]) ->
-      fail
-    ; X_random == 0, Y_random == 0 ->
-      fail
-    ;!
-  ).
+get_random_position_covid(RandomPosition) :-
+	grid_size([MaximalX, MaximalY]),
+	repeat,
+	random(0, MaximalX, RandomX),
+	random(0, MaximalY, RandomY),
+	covid(CovidPosition),
+	agent(AgentPosition),
+	RandomPosition = [RandomX, RandomY],
+	(
+	is_same_position(RandomPosition, CovidPosition) ->
+		fail
+	; is_same_position(RandomPosition, AgentPosition) ->
+		fail
+	;!
+	).
 
 
 % check whether position does exist in lattice
 coordinate_exists([X, Y]) :- 
-  nb_getval(grid_size, [X_max, Y_max]), 
-  X < X_max, 
-  X >= 0, 
-  Y < Y_max, 
-  Y >= 0.
+	grid_size([MaximalX, MaximalY]),
+	X @>= 0, X @< MaximalX, 
+ 	Y @>= 0, Y @< MaximalY.
 
 
 % yield all adjacent to the given cell positions  
-all_adjacent([X, Y], [X1, Y1]) :- 
-  (X1 is X + 1, Y1 is Y, coordinate_exists([X1, Y]));
-  (X1 is X - 1, Y1 is Y, coordinate_exists([X1, Y]));
-  (Y1 is Y + 1, X1 is X, coordinate_exists([X, Y1]));
-  (Y1 is Y - 1, X1 is X, coordinate_exists([X, Y1]));
-  (X1 is X + 1, Y1 is Y + 1, coordinate_exists([X1, Y1]));
-  (X1 is X + 1, Y1 is Y - 1, coordinate_exists([X1, Y1]));
-  (X1 is X - 1, Y1 is Y + 1, coordinate_exists([X1, Y1]));
-  (X1 is X - 1, Y1 is Y - 1, coordinate_exists([X1, Y1])).
+all_adjacent([X1, Y1], [X2, Y2]) :- 
+	(X2 is X1 + 1, Y2 is Y1, coordinate_exists([X2, Y1]));
+	(X2 is X1 - 1, Y2 is Y1, coordinate_exists([X2, Y1]));
+	(Y2 is Y1 + 1, X2 is X1, coordinate_exists([X1, Y2]));
+	(Y2 is Y1 - 1, X2 is X1, coordinate_exists([X1, Y2]));
+	(X2 is X1 + 1, Y2 is Y1 + 1, coordinate_exists([X2, Y2]));
+	(X2 is X1 + 1, Y2 is Y1 - 1, coordinate_exists([X2, Y2]));
+	(X2 is X1 - 1, Y2 is Y1 + 1, coordinate_exists([X2, Y2]));
+	(X2 is X1 - 1, Y2 is Y1 - 1, coordinate_exists([X2, Y2])).
 
 
 % yield vacant not infected random position
-get_random_position_not_covid([X_random, Y_random]) :-
-  nb_getval(grid_size, [X_max, Y_max]),
-  repeat,
-  random(0, X_max, X_random),
-  random(0, Y_max, Y_random),
-  b_getval(covid1, [X_covid1, Y_covid1]),
-  b_getval(covid2, [X_covid2, Y_covid2]),
-  b_getval(home, [X_home, Y_home]),
-  b_getval(mask, [X_mask, Y_mask]),
-  b_getval(doctor, [X_doctor, Y_doctor]),
-  (
-    X_random == 0, Y_random == 0 ->
-      fail
-    ; is_same_position([X_random, Y_random], [X_covid1, Y_covid1]) ->
-      fail
-    ; is_same_position([X_random, Y_random], [X_covid2, Y_covid2]) ->
-      fail
-    ; is_same_position([X_random, Y_random], [X_home, Y_home]) ->
-      fail
-    ; is_same_position([X_random, Y_random], [X_mask, Y_mask]) ->
-      fail
-    ; is_same_position([X_random, Y_random], [X_doctor, Y_doctor]) ->
-      fail
-    ; all_adjacent([X_covid1, Y_covid1], [X_random, Y_random]) ->
-      fail
-    ; all_adjacent([X_covid2, Y_covid2], [X_random, Y_random]) ->
-      fail
-    ; !
-  ).
+get_random_position_not_covid(RandomPosition) :-
+	grid_size([MaximalX, MaximalY]),
+	repeat,
+	random(0, MaximalX, RandomX),
+	random(0, MaximalY, RandomY),
+	agent(AgentPosition),
+	covid(CovidPosition),
+	home(HomePosition),
+	mask(MaskPosition),
+	doctor(DoctorPosition),
+	RandomPosition = [RandomX, RandomY],
+	(
+	is_same_position(RandomPosition, AgentPosition) ->
+	  	fail
+	; is_same_position(RandomPosition, CovidPosition) ->
+	  	fail
+	; is_same_position(RandomPosition, HomePosition) ->
+	  	fail
+	; is_same_position(RandomPosition, MaskPosition) ->
+	  	fail
+	; is_same_position(RandomPosition, DoctorPosition) ->
+	  	fail
+	; all_adjacent(CovidPosition, RandomPosition) ->
+		fail
+	; all_adjacent(CovidPosition, RandomPosition) ->
+		fail
+	; !
+	).
 
 
-% create first cell with covid
-create_covid1() :-
-  get_random_position_covid([X_random, Y_random]),
-  b_setval(covid1, [X_random, Y_random]).
+initialize_variables() :-
+	% Set dimensions of the lattice.  
+	assert(grid_size([9, 9])),
+	assert(agent([0, 0])),
+	assert(covid([-1, -1])),
+	assert(home([-1, -1])),
+	assert(mask([-1, -1])),
+	assert(doctor([-1, -1])),
+ 	assert(minimal_path(100000)).
 
 
-% create second cell with covid
-create_covid2() :-
-  get_random_position_covid([X_random, Y_random]),
-  b_setval(covid2, [X_random, Y_random]).
+% create cell with covid
+create_covid() :-
+	get_random_position_covid(RandomPosition),
+	assert(covid(RandomPosition)),
+	write("Covid position: "), write(RandomPosition), nl.
 
 
 % create cell with home
 create_home() :-
-  get_random_position_not_covid([X_random, Y_random]),
-  b_setval(home, [X_random, Y_random]).
+	get_random_position_not_covid(RandomPosition),
+	assert(home(RandomPosition)),
+	write("Home position: "), write(RandomPosition), nl.
 
 
 % create cell with home
 create_mask() :-
-  get_random_position_not_covid([X_random, Y_random]),
-  b_setval(mask, [X_random, Y_random]).
+	get_random_position_not_covid(RandomPosition),
+	assert(mask(RandomPosition)),
+	write("Mask position: "), write(RandomPosition), nl.
 
 
 % create cell with doctor
 create_doctor() :-
-  get_random_position_not_covid([X_random, Y_random]),
-  b_setval(doctor, [X_random, Y_random]).
+	get_random_position_not_covid(RandomPosition),
+	assert(doctor(RandomPosition)),
+	write("Doctor position: "), write(RandomPosition), nl, nl.
 
 
-% set values of variables to non-existent postitons to simplify code.%
-initialize_variables() :-
-  b_setval(agent, [0, 0]),
-  b_setval(mask_taken, 0),
-  b_setval(doctor_visited, 0),
-  b_setval(covid1, [-1, -1]),
-  b_setval(covid2, [1, -1]),
-  b_setval(home, [-1, -1]),
-  b_setval(mask, [-1, -1]),
-  assert(minimal_path(100000)),
-  b_setval(doctor, [-1, -1]).
-
+reinitialize_variables() :-
+	retractall(covid([-1, -1])),
+	retractall(home([-1, -1])),
+	retractall(mask([-1, -1])),
+	retractall(doctor([-1, -1])).
 
 % create 2 covids, 1 home, 1 mask, 1 doctor
 generate_map() :-
-  create_covid1(),
-  create_covid2(),
-  create_home(),
-  create_mask(),
-  create_doctor().
+	create_covid(),
+	create_covid(),
+	create_home(),
+	create_mask(),
+	create_doctor(),
+	reinitialize_variables().
+
 
 % specify positions of objects manually
 set_map() :-
-	b_setval(covid1, [0, 2]),
- 	b_setval(covid2, [6, 6]),
- 	b_setval(home, [3, 0]),
-	b_setval(mask, [5, 2]),
-	b_setval(doctor, [3, 3]).
+	assert(covid([0, 2])),
+ 	assert(covid([6, 6])),
+ 	assert(home([3, 0])),
+	assert(mask([5, 2])),
+	assert(doctor([3, 3])).
+
 
 resolvable_map1_9x9() :-
-	b_setval(covid1, [0, 2]),
- 	b_setval(covid2, [6, 6]),
- 	b_setval(home, [3, 0]),
-	b_setval(mask, [5, 2]),
-	b_setval(doctor, [3, 3]).
+	assert(covid([0, 2])),
+ 	assert(covid([6, 6])),
+ 	assert(home([3, 0])),
+	assert(mask([5, 2])),
+	assert(doctor([3, 3])).
+
 
 resolvable_map2_9x9() :-
-	b_setval(covid1, [1, 2]),
- 	b_setval(covid2, [3, 0]),
- 	b_setval(home, [3, 2]),
- 	b_setval(mask, [1, 0]),
- 	b_setval(doctor, [4, 3]).
+ 	assert(covid([1, 2])),
+ 	assert(covid([3, 0])),
+ 	assert(home([3, 2])),
+	assert(mask([1, 0])),
+	assert(doctor([4, 3])).
+
 
 impossible_map1_9x9() :-
-	b_setval(covid1, [1, 2]),
- 	b_setval(covid2, [3, 0]),
- 	b_setval(home, [3, 2]),
- 	b_setval(mask, [1, 4]),
- 	b_setval(doctor, [4, 3]).
+ 	assert(covid([1, 2])),
+ 	assert(covid([3, 0])),
+ 	assert(home([3, 2])),
+	assert(mask([1, 4])),
+	assert(doctor([4, 3])).
 
-% print postions of agent, covids, home, mask and doctor
-print_objects() :-
-  b_getval(agent, Agent),
-  b_getval(covid1, Covid1),
-  b_getval(covid2, Covid2),
-  b_getval(home, Home),
-  b_getval(mask, Mask),
-  b_getval(doctor, Doctor),
-  % output the positions
-  write("Agent: "), write(Agent), nl,
-  write("Covid-1: "), write(Covid1), nl,
-  write("Covid-2: "), write(Covid2), nl,
-  write("Home: "), write(Home), nl,
-  write("Mask: "), write(Mask), nl,
-  write("Doctor: "), write(Doctor), nl, nl.
 
 %% ----------------- SEARCHING ----------------------------------------
 
 % check whether specified position is home
 is_home(Position) :-
-  b_getval(home, Position_home),
-  is_same_position(Position, Position_home).
-
-
-all_infected([X, Y]) :-
-  b_getval(covid1, [X_covid1, Y_covid1]),
-  all_adjacent([X_covid1, Y_covid1], [X, Y]).
-
-
-all_infected([X, Y]) :-
-  b_getval(covid2, [X_covid2, Y_covid2]),
-  all_adjacent([X_covid2, Y_covid2], [X, Y]).
-
-
-all_infected([X, Y]) :-
-  b_getval(covid1, [X, Y]).
-
-
-all_infected([X, Y]) :-
-  b_getval(covid2, [X, Y]).
-
-
-not_infected([X, Y]) :-
-  \+ all_infected([X, Y]).  
-
-
-not_visited(Position) :-
-  b_getval(visited, Visited),
-  \+ member(Position, Visited).
+	home(HomePosition),
+	is_same_position(Position, HomePosition).
 
 
 is_mask(Position) :-
-  b_getval(mask, Position_mask),
-  is_same_position(Position, Position_mask).
+	mask(MaskPosition),
+	is_same_position(Position, MaskPosition).
 
 
 is_doctor(Position) :-
-  b_getval(doctor, Position_doctor),
-  is_same_position(Position, Position_doctor).
+	doctor(DoctorPosition),
+	is_same_position(Position, DoctorPosition).
+
+
+all_infected(InfectedPosition) :-
+	(
+		covid(CovidPosition),
+		all_adjacent(CovidPosition, InfectedPosition)
+	);
+	(
+		covid(InfectedPosition)
+	).
+
+not_infected(Position) :-
+	\+ all_infected(Position).  
 
 
 % TODO: minimal length
 % TODO: use knowledge where home is
 perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell) :-
-  all_adjacent(CurrentCell, NextCell),
-  \+ member(NextCell, ResultantPath),
-  (
-    (Mask == 1; Doctor == 1) -> true;
-    not_infected(NextCell)
-  ).
+	all_adjacent(CurrentCell, NextCell),
+	\+ member(NextCell, ResultantPath),
+	(
+	(Mask == 1; Doctor == 1) -> true;
+	not_infected(NextCell)
+	).
 
 
 %% Found the home.
 search(CurrentCell, PreviousPath, Mask, Doctor, ResultantPath) :-
-  is_home(CurrentCell),
-  append(PreviousPath, [CurrentCell], ResultantPath), !,
-  length(ResultantPath, LengthResultantPath).
+	is_home(CurrentCell),
+	append(PreviousPath, [CurrentCell], ResultantPath), !,
+	length(ResultantPath, LengthResultantPath).
 
 
 %% Found the mask.
 search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
-  is_mask(CurrentCell),
-  MaskNew = 1,
-  append(PreviousPath, [CurrentCell], ResultantPath),
-  
-  length(ResultantPath, LengthResultantPath),
-  minimal_path(MinimalPath),
-  LengthResultantPath < MinimalPath,
-  
-  perceive(CurrentCell, ResultantPath, MaskNew, Doctor, NextCell),
-  search(NextCell, ResultantPath, MaskNew, Doctor, NextResultantPath).
+	is_mask(CurrentCell),
+	MaskNew = 1,
+	append(PreviousPath, [CurrentCell], ResultantPath),
+
+	length(ResultantPath, LengthResultantPath),
+	minimal_path(MinimalPath),
+	LengthResultantPath < MinimalPath,
+
+	perceive(CurrentCell, ResultantPath, MaskNew, Doctor, NextCell),
+	search(NextCell, ResultantPath, MaskNew, Doctor, NextResultantPath).
 
 
 %% Found the doctor.
 search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
-  is_doctor(CurrentCell),
-  DoctorNew = 1,
-  append(PreviousPath, [CurrentCell], ResultantPath),
-  
-  length(ResultantPath, LengthResultantPath),
-  minimal_path(MinimalPath),
-  LengthResultantPath < MinimalPath,
-  
-  perceive(CurrentCell, ResultantPath, Mask, DoctorNew, NextCell),
-  search(NextCell, ResultantPath, Mask, DoctorNew, NextResultantPath).
+	is_doctor(CurrentCell),
+	DoctorNew = 1,
+	append(PreviousPath, [CurrentCell], ResultantPath),
+
+	length(ResultantPath, LengthResultantPath),
+	minimal_path(MinimalPath),
+	LengthResultantPath < MinimalPath,
+
+	perceive(CurrentCell, ResultantPath, Mask, DoctorNew, NextCell),
+	search(NextCell, ResultantPath, Mask, DoctorNew, NextResultantPath).
 
 
 search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
-  \+ is_mask(CurrentCell), \+ is_doctor(CurrentCell),
-  append(PreviousPath, [CurrentCell], ResultantPath),
-  
-  length(ResultantPath, LengthResultantPath),
-  minimal_path(MinimalPath),
-  LengthResultantPath < MinimalPath,
-  
-  perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell),
-  search(NextCell, ResultantPath, Mask, Doctor, NextResultantPath).
+	\+ is_mask(CurrentCell), \+ is_doctor(CurrentCell),
+	append(PreviousPath, [CurrentCell], ResultantPath),
+	
+	length(ResultantPath, LengthResultantPath),
+	minimal_path(MinimalPath),
+	LengthResultantPath < MinimalPath,
+
+	perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell),
+	search(NextCell, ResultantPath, Mask, Doctor, NextResultantPath).
 
 %% Add Lost.
 
@@ -294,31 +277,37 @@ solve(Length, Path) :-
 	   ; true
 	).
 
+
 backtrack(Length, Path) :-
 	setof((Length, Path), solve(Length, Path), Solutions),
  	nth0(0, Solutions, Optimal, _),
   	Optimal = (OptimalSteps, OptimalPath),
   	write("Win."), nl, write("Number of steps: "), write(OptimalSteps), nl, write("Path: "), write(OptimalPath), !.
 
+
 backtrack(Length,Path):-
 	write("Lost.").
 
-test(Length, Path) :-
-  % set dimensions of the lattice  
-  nb_setval(grid_size, [9, 9]),
-  initialize_variables(),
-  
-  % Either generate map randomly using rule generate_map()
-  %        or set map manually using rule set_map()
-  %        or use one of the prepared maps using rules resolvable_map1_9x9(), 
-  %        resolvable_map2_9x9(), impossible_map1_9x9().
-  
-  % Comment out the odd:
-  % generate_map(),
-  % set_map(),
-  % resolvable_map1_9x9(), 
-  % resolvable_map2_9x9(), 
-  % impossible_map1_9x9(),
 
-  print_objects(),
-  backtrack(Length, Path).
+test(Length, Path) :-
+	% Get rid of all out-of-date facts.
+	prepare(),
+
+	% Initialize variables to store positions of agent, covids, home, mask doctor 
+	% and starting minimal length of the path.
+	initialize_variables(),
+
+	% Either generate map randomly using rule generate_map()
+	%        or set map manually using rule set_map()
+	%        or use one of the prepared maps using rules resolvable_map1_9x9(), 
+	%        resolvable_map2_9x9(), impossible_map1_9x9().
+
+	% Comment out the odd:
+	generate_map(),
+	% set_map(),
+	% resolvable_map1_9x9(), 
+	% resolvable_map2_9x9(), 
+	% impossible_map1_9x9(),
+
+	% Backtracking approach.
+	backtrack(Length, Path).
