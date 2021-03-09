@@ -107,10 +107,6 @@ initialize_variables() :-
 	% create dummy positions for a home, mask, doctor to simplify code for the 
 	% rule get_random_position_not_covid().
 	assert(agent([0, 0])),
-	assert(covid([-1, -1])),
-	assert(home([-1, -1])),
-	assert(mask([-1, -1])),
-	assert(doctor([-1, -1])),
  	assert(minimal_path(100000)).
 
 
@@ -150,8 +146,17 @@ reinitialize_variables() :-
 	retractall(doctor([-1, -1])).
 
 
+assert_dummy() :-
+	% Supprtive facts.
+	assert(covid([-1, -1])),
+	assert(home([-1, -1])),
+	assert(mask([-1, -1])),
+	assert(doctor([-1, -1])).
+
+
 generate_map() :-
 	% Randomly generate map, i.e. create 2 covids, 1 home, 1 mask and 1 doctor.
+	assert_dummy(),
 	create_covid(),
 	create_covid(),
 	create_home(),
@@ -245,15 +250,17 @@ all_infected(InfectedPosition) :-
 		covid(InfectedPosition)
 	).
 
+
 not_infected(Position) :-
 	% Check whether the given position is not infected.
 	\+ all_infected(Position).  
+
 
 is_infected(Position) :-
 	% Check whether the give position is infected.
 	all_infected(Position).
 
-% TODO: use knowledge where home is.
+
 perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell) :-
 	% Yield all the cells where agent could go.
 	% Firstly, it determines all adjacent cells to the given one.
@@ -265,15 +272,45 @@ perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell) :-
 	(
 		(Mask == 1; Doctor == 1) -> true;
 			not_infected(NextCell)
+	).	
+
+
+absolute_value(Number, Absolute) :- 
+	% Yield absolute value of number.
+	(
+		Number @<  0 , 
+		Absolute is -Number
+	); 
+	(
+		Number @>= 0
 	).
+
+
+maximal(X, Y, Maximal) :-
+	% Yield maximalnumber over two given.
+	Maximal is max(X, Y).
+
+
+distance_home([AgentX, AgentY], Distance) :-
+	% Yield the Chebyshev distance for an agent position.
+	home([HomeX, HomeY]),
+	DistanceX is HomeX - AgentX,
+	DistanceY is HomeY - AgentY,
+	absolute_value(DistanceX, AbsoluteDistanceX),
+	absolute_value(DistanceY, AbsoluteDistanceY),
+	maximal(AbsoluteDistanceX, AbsoluteDistanceY, Distance).
+
 
 
 search(CurrentCell, PreviousPath, Mask, Doctor, ResultantPath) :-
 	% Searching algorith.
 	% The agent found the home, so it is done.
 	is_home(CurrentCell),
-	append(PreviousPath, [CurrentCell], ResultantPath), !,
-	length(ResultantPath, LengthResultantPath).
+	write(1), nl,
+	append(PreviousPath, [CurrentCell], ResultantPath),
+	write(2), nl,
+	length(ResultantPath, LengthResultantPath),
+	write("Reached. "), write(LengthResultantPath), nl, !.
 
 
 search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
@@ -285,7 +322,9 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 
 	length(ResultantPath, LengthResultantPath),
 	minimal_path(MinimalPath),
-	LengthResultantPath < MinimalPath,
+	distance_home(CurrentCell, DistanceHome),
+	SupposedLength is LengthResultantPath + DistanceHome,
+	SupposedLength < MinimalPath,
 
 	perceive(CurrentCell, ResultantPath, MaskNew, Doctor, NextCell),
 	search(NextCell, ResultantPath, MaskNew, Doctor, NextResultantPath).
@@ -301,7 +340,9 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 
 	length(ResultantPath, LengthResultantPath),
 	minimal_path(MinimalPath),
-	LengthResultantPath < MinimalPath,
+	distance_home(CurrentCell, DistanceHome),
+	SupposedLength is LengthResultantPath + DistanceHome,
+	SupposedLength < MinimalPath,
 
 	perceive(CurrentCell, ResultantPath, Mask, DoctorNew, NextCell),
 	search(NextCell, ResultantPath, Mask, DoctorNew, NextResultantPath).
@@ -316,7 +357,9 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	
 	length(ResultantPath, LengthResultantPath),
 	minimal_path(MinimalPath),
-	LengthResultantPath < MinimalPath,
+	distance_home(CurrentCell, DistanceHome),
+	SupposedLength is LengthResultantPath + DistanceHome,
+	SupposedLength < MinimalPath,
 
 	perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell),
 	search(NextCell, ResultantPath, Mask, Doctor, NextResultantPath).
@@ -339,15 +382,13 @@ backtrack(Length, Path) :-
 	% In case it managed to locate the optimal path the agent has won.
 	% Output number of steps and optimal path.
 	% Otherwise, the agent has lost.
-	(
-		setof((Length, Path), solve(Length, Path), Solutions),
-	 	nth0(0, Solutions, Optimal, _),
-	  	Optimal = (OptimalSteps, OptimalPath),
-	  	write("Win."), nl, write("Number of steps: "), write(OptimalSteps), nl, write("Path: "), write(OptimalPath), !
-  	);
-  	(
-  		write("Lost.")
-  	).
+	setof((Length, Path), solve(Length, Path), Solutions),
+ 	nth0(0, Solutions, Optimal, _),
+  	Optimal = (OptimalSteps, OptimalPath),
+  	write("Win."), nl, write("Number of steps: "), write(OptimalSteps), nl, write("Path: "), write(OptimalPath), !.
+
+backtrack(Length, Path) :-
+	write("Lost.").
 
 
 test(Length, Path) :-
@@ -370,7 +411,7 @@ test(Length, Path) :-
 
 	% Comment out the odd:
 	% generate_map(),
-	set_map(),
+	 set_map(),
 	% resolvable_map1_9x9(), 
 	% resolvable_map2_9x9(), 
 	% resolvable_map3_9x9(), 
