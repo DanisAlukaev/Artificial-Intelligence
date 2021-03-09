@@ -59,13 +59,13 @@ coordinate_exists([X, Y]) :-
 all_adjacent([X1, Y1], [X2, Y2]) :- 
 	% Yield Moore neighborhood for a given position.
 	(X2 is X1 + 1, Y2 is Y1, coordinate_exists([X2, Y1]));
-	(X2 is X1 - 1, Y2 is Y1, coordinate_exists([X2, Y1]));
-	(Y2 is Y1 + 1, X2 is X1, coordinate_exists([X1, Y2]));
-	(Y2 is Y1 - 1, X2 is X1, coordinate_exists([X1, Y2]));
 	(X2 is X1 + 1, Y2 is Y1 + 1, coordinate_exists([X2, Y2]));
-	(X2 is X1 + 1, Y2 is Y1 - 1, coordinate_exists([X2, Y2]));
+	(Y2 is Y1 - 1, X2 is X1, coordinate_exists([X1, Y2]));
 	(X2 is X1 - 1, Y2 is Y1 + 1, coordinate_exists([X2, Y2]));
-	(X2 is X1 - 1, Y2 is Y1 - 1, coordinate_exists([X2, Y2])).
+	(X2 is X1 - 1, Y2 is Y1, coordinate_exists([X2, Y1]));
+	(X2 is X1 - 1, Y2 is Y1 - 1, coordinate_exists([X2, Y2]));
+	(Y2 is Y1 + 1, X2 is X1, coordinate_exists([X1, Y2]));
+	(X2 is X1 + 1, Y2 is Y1 - 1, coordinate_exists([X2, Y2])).
 
 
 get_random_position_not_covid(RandomPosition) :-
@@ -81,8 +81,7 @@ get_random_position_not_covid(RandomPosition) :-
 	repeat,
 	random(0, MaximalX, RandomX),
 	random(0, MaximalY, RandomY),
-	agent(AgentPosition), 
-	covid(CovidPosition),
+	agent(AgentPosition),
 	home(HomePosition),
 	mask(MaskPosition),
 	doctor(DoctorPosition),
@@ -167,11 +166,11 @@ generate_map() :-
 
 set_map() :-
 	% Specify postions in a form of [X, Y] as it done below.
-	assert(covid([4, 1])),
- 	assert(covid([7, 6])),
- 	assert(home([7, 1])),
-	assert(mask([1, 7])),
-	assert(doctor([4, 4])).
+	assert(covid([0, 2])),
+ 	assert(covid([6, 6])),
+ 	assert(home([3, 0])),
+	assert(mask([5, 2])),
+	assert(doctor([3, 3])).
 
 
 %% ----------------- PREPARED MAPS -----------------------------------------
@@ -277,13 +276,11 @@ perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell) :-
 
 absolute_value(Number, Absolute) :- 
 	% Yield absolute value of number.
-	(
-		Number @<  0 , 
-		Absolute is -Number
-	); 
-	(
-		Number @>= 0
-	).
+	Number @<  0 , 
+	Absolute is -Number.
+
+absolute_value(Number, Number) :- 
+	Number @>= 0.
 
 
 maximal(X, Y, Maximal) :-
@@ -306,18 +303,16 @@ search(CurrentCell, PreviousPath, Mask, Doctor, ResultantPath) :-
 	% Searching algorith.
 	% The agent found the home, so it is done.
 	is_home(CurrentCell),
-	write(1), nl,
 	append(PreviousPath, [CurrentCell], ResultantPath),
-	write(2), nl,
-	length(ResultantPath, LengthResultantPath),
-	write("Reached. "), write(LengthResultantPath), nl, !.
+	length(ResultantPath, LengthResultantPath), !.
 
 
 search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	% Searching algorith.
 	% The agent found the mask, now it can go through infected cells.
 	% Optimization: cut the solution branch if the length of current path is greater than of the minimal found.
-	is_mask(CurrentCell), MaskNew = 1,
+	is_mask(CurrentCell),
+	MaskNew = 1,
 	append(PreviousPath, [CurrentCell], ResultantPath),
 
 	length(ResultantPath, LengthResultantPath),
@@ -385,9 +380,12 @@ backtrack(Length, Path) :-
 	setof((Length, Path), solve(Length, Path), Solutions),
  	nth0(0, Solutions, Optimal, _),
   	Optimal = (OptimalSteps, OptimalPath),
-  	write("Win."), nl, write("Number of steps: "), write(OptimalSteps), nl, write("Path: "), write(OptimalPath), !.
+  	StepsWithoutFirstCell is OptimalSteps - 1,
+  	write("Win."), nl, write("Number of steps: "), write(StepsWithoutFirstCell), nl, write("Path: "), write(OptimalPath), !.
 
 backtrack(Length, Path) :-
+	Length is 0, 
+	Path = [],
 	write("Lost.").
 
 
@@ -410,8 +408,8 @@ test(Length, Path) :-
 	%        resolvable_map3_9x9(), impossible_map1_9x9(), ... , impossible_map2_9x9().
 
 	% Comment out the odd:
-	% generate_map(),
-	 set_map(),
+	 generate_map(),
+	% set_map(),
 	% resolvable_map1_9x9(), 
 	% resolvable_map2_9x9(), 
 	% resolvable_map3_9x9(), 
