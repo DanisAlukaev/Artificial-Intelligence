@@ -1,11 +1,12 @@
 % Solution for the Home Assignment 1.
 %
-% Student:		Danis Alukaev
-% Group:		BS19-02
+% Student:	Danis Alukaev
+% Group:	BS19-02
 % Student ID:	19BS551
 
 
 prepare() :-
+	% remove all previously created facts.
 	retractall(grid_size(_)),
 	retractall(agent(_)),
 	retractall(covid(_)),
@@ -175,7 +176,7 @@ set_map() :-
 
 %% ----------------- PREPARED MAPS -----------------------------------------
 %  The following section contatins ready-to-use maps of the size 9x9.
-%  In order to try one of them, comment out the neccessary map in test() rule.
+%  To try one of them, comment out the neccessary map in test() rule.
 
 
 resolvable_map1_9x9() :-
@@ -274,13 +275,17 @@ perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell) :-
 	).	
 
 
+absolute_value(Number, Number) :-
+ 	% Yield absolute value of number.
+	% Cover the case when number is positive.
+	Number >= 0.
+
+
 absolute_value(Number, Absolute) :- 
 	% Yield absolute value of number.
+	% Cover the case when number is negative.
 	Number < 0 , 
 	Absolute is -Number.
-
-absolute_value(Number, Number) :- 
-	Number >= 0.
 
 
 maximal(X, Y, Maximal) :-
@@ -298,52 +303,79 @@ distance_home([AgentX, AgentY], Distance) :-
 	maximal(AbsoluteDistanceX, AbsoluteDistanceY, Distance).
 
 
+% The maximal number of candidate cells is 8 by the problem statement:
+% agent can move up, down, left, right, and diagonally. 
 get_candidate(Candidates, CandidateCell) :-
+	% Yield cell candidate with index 0. 
 	nth0(0, Candidates, Candidate),
 	Candidate = (_, CandidateCell).
 
 
 get_candidate(Candidates, CandidateCell) :-
+	% Yield cell candidate with index 1. 
 	nth0(1, Candidates, Candidate),
 	Candidate = (_, CandidateCell).
 
+
 get_candidate(Candidates, CandidateCell) :-
+	% Yield cell candidate with index 2. 
 	nth0(2, Candidates, Candidate),
 	Candidate = (_, CandidateCell).
 
+
 get_candidate(Candidates, CandidateCell) :-
+	% Yield cell candidate with index 3. 
 	nth0(3, Candidates, Candidate),
 	Candidate = (_, CandidateCell).
 
+
 get_candidate(Candidates, CandidateCell) :-
+	% Yield cell candidate with index 4. 
 	nth0(4, Candidates, Candidate),
 	Candidate = (_, CandidateCell).
 
+
 get_candidate(Candidates, CandidateCell) :-
+	% Yield cell candidate with index 5. 
 	nth0(5, Candidates, Candidate),
 	Candidate = (_, CandidateCell).
 
+
 get_candidate(Candidates, CandidateCell) :-
+	% Yield cell candidate with index 6. 
 	nth0(6, Candidates, Candidate),
 	Candidate = (_, CandidateCell).
 
+
 get_candidate(Candidates, CandidateCell) :-
+	% Yield cell candidate with index 7. 
 	nth0(7, Candidates, Candidate),
 	Candidate = (_, CandidateCell).
 
-get_candidate(Candidates, CandidateCell) :-
-	nth0(8, Candidates, Candidate),
-	Candidate = (_, CandidateCell).
 
 prioritize([], PrioritizedCandidates, Result) :-
+	% There is nothing left in list of candidate cells.
 	Result = PrioritizedCandidates.
 
 
 prioritize([Cell|Tail], PrioritizedCandidates, Result) :-
+	% Calculate the Chebyshev distance from candidate cell to home.
+	% Use this distance as priority of this cell: the lower the priority the better.
+	% Priority and position of cell are stored as structures.
 	distance_home(Cell, DistanceHome),
 	PrioritizedCandidate = (DistanceHome, Cell),
 	append(PrioritizedCandidates, [PrioritizedCandidate], ResultantPrioritizedCandidates),
 	prioritize(Tail, ResultantPrioritizedCandidates, Result).
+
+
+less_than_minimal_path(ResultantPath, CurrentCell) :-
+	% Compare the length from current cell to home with the length of current minimal path.
+	length(ResultantPath, LengthResultantPath),
+	minimal_path(MinimalPath),
+	distance_home(CurrentCell, DistanceHome),
+	SupposedLength is LengthResultantPath + DistanceHome,
+	SupposedLength < MinimalPath.
+
 
 
 search(CurrentCell, PreviousPath, Mask, Doctor, ResultantPath) :-
@@ -361,13 +393,7 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	is_mask(CurrentCell),
 	MaskNew = 1,
 	append(PreviousPath, [CurrentCell], ResultantPath),
-
-	length(ResultantPath, LengthResultantPath),
-	minimal_path(MinimalPath),
-	distance_home(CurrentCell, DistanceHome),
-	SupposedLength is LengthResultantPath + DistanceHome,
-	SupposedLength < MinimalPath,
-
+	less_than_minimal_path(ResultantPath, CurrentCell),
 	setof(NextCell, perceive(CurrentCell, ResultantPath, MaskNew, Doctor, NextCell), Candidates),
 	prioritize(Candidates, [], PrioritizedCandidates),
 	sort(0, @<, PrioritizedCandidates, Sorted),
@@ -382,13 +408,7 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	is_doctor(CurrentCell),
 	DoctorNew = 1,
 	append(PreviousPath, [CurrentCell], ResultantPath),
-
-	length(ResultantPath, LengthResultantPath),
-	minimal_path(MinimalPath),
-	distance_home(CurrentCell, DistanceHome),
-	SupposedLength is LengthResultantPath + DistanceHome,
-	SupposedLength < MinimalPath,
-
+	less_than_minimal_path(ResultantPath, CurrentCell),
 	setof(NextCell, perceive(CurrentCell, ResultantPath, Mask, DoctorNew, NextCell), Candidates),
 	prioritize(Candidates, [], PrioritizedCandidates),
 	sort(0, @<, PrioritizedCandidates, Sorted),
@@ -402,13 +422,7 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	% Optimization: cut the solution branch if the length of current path is greater than of the minimal found.
 	\+ is_mask(CurrentCell), \+ is_doctor(CurrentCell),
 	append(PreviousPath, [CurrentCell], ResultantPath),
-	
-	length(ResultantPath, LengthResultantPath),
-	minimal_path(MinimalPath),
-	distance_home(CurrentCell, DistanceHome),
-	SupposedLength is LengthResultantPath + DistanceHome,
-	SupposedLength < MinimalPath,
-
+	less_than_minimal_path(ResultantPath, CurrentCell),
 	setof(NextCell, perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell), Candidates),
 	prioritize(Candidates, [], PrioritizedCandidates),
 	sort(0, @<, PrioritizedCandidates, Sorted),
@@ -433,14 +447,16 @@ backtrack(Length, Path) :-
 	% Find all solution to goal using setof function.
 	% In case it managed to locate the optimal path the agent has won.
 	% Output number of steps and optimal path.
-	% Otherwise, the agent has lost.
 	setof((Length, Path), solve(Length, Path), Solutions),
  	nth0(0, Solutions, Optimal, _),
   	Optimal = (OptimalSteps, OptimalPath),
   	StepsWithoutFirstCell is OptimalSteps - 1,
   	write("Win."), nl, write("Number of steps: "), write(StepsWithoutFirstCell), nl, write("Path: "), write(OptimalPath), !.
 
+
 backtrack(Length, Path) :-
+	% In case no path was found, the agent has lost.
+	% Set number of steps to zero and path to empty list.
 	Length is 0, 
 	Path = [],
 	write("Lost.").
@@ -465,8 +481,8 @@ test(Length, Path) :-
 	%        resolvable_map3_9x9(), impossible_map1_9x9(), ... , impossible_map2_9x9().
 
 	% Comment out the odd:
-	% generate_map(),
-	set_map(),
+	generate_map(),
+	% set_map(),
 	% resolvable_map1_9x9(), 
 	% resolvable_map2_9x9(), 
 	% resolvable_map3_9x9(), 
