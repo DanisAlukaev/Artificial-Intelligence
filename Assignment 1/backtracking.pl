@@ -276,11 +276,11 @@ perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell) :-
 
 absolute_value(Number, Absolute) :- 
 	% Yield absolute value of number.
-	Number @<  0 , 
+	Number < 0 , 
 	Absolute is -Number.
 
 absolute_value(Number, Number) :- 
-	Number @>= 0.
+	Number >= 0.
 
 
 maximal(X, Y, Maximal) :-
@@ -298,6 +298,42 @@ distance_home([AgentX, AgentY], Distance) :-
 	maximal(AbsoluteDistanceX, AbsoluteDistanceY, Distance).
 
 
+get_candidate(Candidates, CandidateCell) :-
+	nth0(0, Candidates, Candidate),
+	Candidate = CandidateCell.
+
+
+get_candidate(Candidates, CandidateCell) :-
+	nth0(1, Candidates, Candidate),
+	Candidate = CandidateCell.
+
+get_candidate(Candidates, CandidateCell) :-
+	nth0(2, Candidates, Candidate),
+	Candidate = CandidateCell.
+
+get_candidate(Candidates, CandidateCell) :-
+	nth0(3, Candidates, Candidate),
+	Candidate = CandidateCell.
+
+get_candidate(Candidates, CandidateCell) :-
+	nth0(4, Candidates, Candidate),
+	Candidate = CandidateCell.
+
+get_candidate(Candidates, CandidateCell) :-
+	nth0(5, Candidates, Candidate),
+	Candidate = CandidateCell.
+
+get_candidate(Candidates, CandidateCell) :-
+	nth0(6, Candidates, Candidate),
+	Candidate = CandidateCell.
+
+get_candidate(Candidates, CandidateCell) :-
+	nth0(7, Candidates, Candidate),
+	Candidate = CandidateCell.
+
+get_candidate(Candidates, CandidateCell) :-
+	nth0(8, Candidates, Candidate),
+	Candidate = CandidateCell.
 
 search(CurrentCell, PreviousPath, Mask, Doctor, ResultantPath) :-
 	% Searching algorith.
@@ -321,8 +357,10 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	SupposedLength is LengthResultantPath + DistanceHome,
 	SupposedLength < MinimalPath,
 
-	perceive(CurrentCell, ResultantPath, MaskNew, Doctor, NextCell),
-	search(NextCell, ResultantPath, MaskNew, Doctor, NextResultantPath).
+	setof(NextCell, perceive(CurrentCell, ResultantPath, MaskNew, Doctor, NextCell), Candidates),
+	write(Candidates), nl,
+	get_candidate(Candidates, CandidateCell),
+	search(CandidateCell, ResultantPath, MaskNew, Doctor, NextResultantPath).
 
 
 search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
@@ -339,8 +377,10 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	SupposedLength is LengthResultantPath + DistanceHome,
 	SupposedLength < MinimalPath,
 
-	perceive(CurrentCell, ResultantPath, Mask, DoctorNew, NextCell),
-	search(NextCell, ResultantPath, Mask, DoctorNew, NextResultantPath).
+	setof(NextCell, perceive(CurrentCell, ResultantPath, Mask, DoctorNew, NextCell), Candidates),
+	write(Candidates), nl,
+	get_candidate(Candidates, CandidateCell),
+	search(CandidateCell, ResultantPath, Mask, DoctorNew, NextResultantPath).
 
 
 search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
@@ -356,8 +396,11 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	SupposedLength is LengthResultantPath + DistanceHome,
 	SupposedLength < MinimalPath,
 
-	perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell),
-	search(NextCell, ResultantPath, Mask, Doctor, NextResultantPath).
+	setof(NextCell, perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell), Candidates),
+	write(Candidates), nl,
+	get_candidate(Candidates, CandidateCell), 
+	
+	search(CandidateCell, ResultantPath, Mask, Doctor, NextResultantPath).
 
 
 solve(Length, Path) :-
