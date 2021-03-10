@@ -166,11 +166,11 @@ generate_map() :-
 
 set_map() :-
 	% Specify postions in a form of [X, Y] as it done below.
-	assert(covid([0, 2])),
- 	assert(covid([6, 6])),
- 	assert(home([3, 0])),
-	assert(mask([5, 2])),
-	assert(doctor([3, 3])).
+	assert(covid([4, 1])),
+ 	assert(covid([7, 6])),
+ 	assert(home([7, 1])),
+	assert(mask([1, 7])),
+	assert(doctor([4, 4])).
 
 
 %% ----------------- PREPARED MAPS -----------------------------------------
@@ -300,40 +300,51 @@ distance_home([AgentX, AgentY], Distance) :-
 
 get_candidate(Candidates, CandidateCell) :-
 	nth0(0, Candidates, Candidate),
-	Candidate = CandidateCell.
+	Candidate = (_, CandidateCell).
 
 
 get_candidate(Candidates, CandidateCell) :-
 	nth0(1, Candidates, Candidate),
-	Candidate = CandidateCell.
+	Candidate = (_, CandidateCell).
 
 get_candidate(Candidates, CandidateCell) :-
 	nth0(2, Candidates, Candidate),
-	Candidate = CandidateCell.
+	Candidate = (_, CandidateCell).
 
 get_candidate(Candidates, CandidateCell) :-
 	nth0(3, Candidates, Candidate),
-	Candidate = CandidateCell.
+	Candidate = (_, CandidateCell).
 
 get_candidate(Candidates, CandidateCell) :-
 	nth0(4, Candidates, Candidate),
-	Candidate = CandidateCell.
+	Candidate = (_, CandidateCell).
 
 get_candidate(Candidates, CandidateCell) :-
 	nth0(5, Candidates, Candidate),
-	Candidate = CandidateCell.
+	Candidate = (_, CandidateCell).
 
 get_candidate(Candidates, CandidateCell) :-
 	nth0(6, Candidates, Candidate),
-	Candidate = CandidateCell.
+	Candidate = (_, CandidateCell).
 
 get_candidate(Candidates, CandidateCell) :-
 	nth0(7, Candidates, Candidate),
-	Candidate = CandidateCell.
+	Candidate = (_, CandidateCell).
 
 get_candidate(Candidates, CandidateCell) :-
 	nth0(8, Candidates, Candidate),
-	Candidate = CandidateCell.
+	Candidate = (_, CandidateCell).
+
+prioritize([], PrioritizedCandidates, Result) :-
+	Result = PrioritizedCandidates.
+
+
+prioritize([Cell|Tail], PrioritizedCandidates, Result) :-
+	distance_home(Cell, DistanceHome),
+	PrioritizedCandidate = (DistanceHome, Cell),
+	append(PrioritizedCandidates, [PrioritizedCandidate], ResultantPrioritizedCandidates),
+	prioritize(Tail, ResultantPrioritizedCandidates, Result).
+
 
 search(CurrentCell, PreviousPath, Mask, Doctor, ResultantPath) :-
 	% Searching algorith.
@@ -358,8 +369,9 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	SupposedLength < MinimalPath,
 
 	setof(NextCell, perceive(CurrentCell, ResultantPath, MaskNew, Doctor, NextCell), Candidates),
-	write(Candidates), nl,
-	get_candidate(Candidates, CandidateCell),
+	prioritize(Candidates, [], PrioritizedCandidates),
+	sort(0, @<, PrioritizedCandidates, Sorted),
+	get_candidate(Sorted, CandidateCell),
 	search(CandidateCell, ResultantPath, MaskNew, Doctor, NextResultantPath).
 
 
@@ -378,8 +390,9 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	SupposedLength < MinimalPath,
 
 	setof(NextCell, perceive(CurrentCell, ResultantPath, Mask, DoctorNew, NextCell), Candidates),
-	write(Candidates), nl,
-	get_candidate(Candidates, CandidateCell),
+	prioritize(Candidates, [], PrioritizedCandidates),
+	sort(0, @<, PrioritizedCandidates, Sorted),
+	get_candidate(Sorted, CandidateCell),
 	search(CandidateCell, ResultantPath, Mask, DoctorNew, NextResultantPath).
 
 
@@ -397,8 +410,9 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	SupposedLength < MinimalPath,
 
 	setof(NextCell, perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell), Candidates),
-	write(Candidates), nl,
-	get_candidate(Candidates, CandidateCell), 
+	prioritize(Candidates, [], PrioritizedCandidates),
+	sort(0, @<, PrioritizedCandidates, Sorted),
+	get_candidate(Sorted, CandidateCell), 
 	
 	search(CandidateCell, ResultantPath, Mask, Doctor, NextResultantPath).
 
@@ -451,8 +465,8 @@ test(Length, Path) :-
 	%        resolvable_map3_9x9(), impossible_map1_9x9(), ... , impossible_map2_9x9().
 
 	% Comment out the odd:
-	 generate_map(),
-	% set_map(),
+	% generate_map(),
+	set_map(),
 	% resolvable_map1_9x9(), 
 	% resolvable_map2_9x9(), 
 	% resolvable_map3_9x9(), 
