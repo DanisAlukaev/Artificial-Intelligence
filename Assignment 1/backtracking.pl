@@ -1,8 +1,8 @@
 % Solution for the Home Assignment 1.
 %
-% Student:	Danis Alukaev
-% Group:	BS19-02
-% Student ID:	19BS551
+% Student:			Danis Alukaev
+% Group:			BS19-02
+% Student ID:			19BS551
 
 
 prepare() :-
@@ -13,7 +13,9 @@ prepare() :-
 	retractall(home(_)),
 	retractall(mask(_)),
 	retractall(doctor(_)),
-	retractall(minimal_path(_)).
+	retractall(minimal_path(_)),
+	retractall(optimal(_)).
+
 
 %% ----------------- MAP GENERATION ----------------------------------------
 
@@ -107,6 +109,7 @@ initialize_variables() :-
 	% create dummy positions for a home, mask, doctor to simplify code for the 
 	% rule get_random_position_not_covid().
 	assert(agent([0, 0])),
+	assert(optimal([])),
  	assert(minimal_path(100000)).
 
 
@@ -172,6 +175,66 @@ set_map() :-
  	assert(home([7, 1])),
 	assert(mask([1, 7])),
 	assert(doctor([4, 4])).
+
+
+print_map(X, Y) :-
+	% The rule iteratively decrease the index of the cell along X-axis,
+	% so when this index becomes negative, the outputing of map is finished
+	X == -1, nl, !.
+
+
+print_map(X, Y) :-
+	% When the index of cell along Y-axis becomes equal to maximal possible,
+	% move the carriage to the next line.
+	grid_size([_, MaximalY]),
+	Y == MaximalY, 
+	nl,
+	NextX is X - 1, NextY is 0,
+	print_map(NextX, NextY).
+
+
+print_map(X, Y) :-
+	% Output the corresponding symbol for object in the cell:
+	% - actor position		A
+	% - home position 		H
+	% - cell in found path 	X
+	% - covid cell 		C
+	% - infected cell 		I
+	% - doctor position 		D
+	% - mask position 		M 
+	grid_size([_, MaximalY]),
+	Y \= MaximalY,
+	optimal(Path),
+	(
+		agent([X, Y]) -> write("A ")
+		; home([X, Y]) -> write("H ")
+		; member([X, Y], Path) -> write("X ")
+		; covid([X, Y]) -> write("C ")
+		; all_infected([X, Y]) -> write("I ")
+		; doctor([X, Y]) -> write("D ")
+		; mask([X, Y]) -> write("M ")
+		; write("* ")
+	),
+	NextX is X,
+	NextY is Y + 1,
+	print_map(NextX, NextY).
+
+
+print_map() :-
+	% Entry point for rule drawing the map.
+	grid_size([MaximalX, _]),
+	MaximalIndX is MaximalX - 1,
+	print_map(MaximalIndX, 0).
+
+
+original_map() :-
+	nl, write("Original map: "), nl,
+	print_map().
+
+
+map_with_path() :-
+	nl, write("Original map with shortest path shown: "), nl,
+	print_map().
 
 
 %% ----------------- PREPARED MAPS -----------------------------------------
@@ -451,7 +514,9 @@ backtrack(Length, Path) :-
  	nth0(0, Solutions, Optimal, _),
   	Optimal = (OptimalSteps, OptimalPath),
   	StepsWithoutFirstCell is OptimalSteps - 1,
-  	write("Win."), nl, write("Number of steps: "), write(StepsWithoutFirstCell), nl, write("Path: "), write(OptimalPath), !.
+  	retractall(optimal(_)),
+  	assert(optimal(OptimalPath)),
+  	write("Win."), nl, write("Number of steps: "), write(StepsWithoutFirstCell), nl, write("Path: "), write(OptimalPath), nl, !.
 
 
 backtrack(Length, Path) :-
@@ -481,7 +546,7 @@ test(Length, Path) :-
 	%        resolvable_map3_9x9(), impossible_map1_9x9(), ... , impossible_map2_9x9().
 
 	% Comment out the odd:
-	generate_map(),
+	 generate_map(),
 	% set_map(),
 	% resolvable_map1_9x9(), 
 	% resolvable_map2_9x9(), 
@@ -489,5 +554,11 @@ test(Length, Path) :-
 	% impossible_map1_9x9(),
 	% impossible_map2_9x9(),
 
+	% Display the map.
+	once(original_map()),
+
 	% Backtracking approach.
-	backtrack(Length, Path).
+	backtrack(Length, Path),
+
+	% Display the map with found by backtracking shortest path.
+	once(map_with_path()).
