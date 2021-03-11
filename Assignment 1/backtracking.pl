@@ -2,7 +2,7 @@
 %
 % Student:			Danis Alukaev
 % Group:			BS19-02
-% Student ID:			19BS551
+% Student ID:		19BS551
 
 
 prepare() :-
@@ -59,7 +59,7 @@ coordinate_exists([X, Y]) :-
  	Y @>= 0, Y @< MaximalY.
 
 
-all_adjacent([X1, Y1], [X2, Y2]) :- 
+get_adjacent([X1, Y1], [X2, Y2]) :- 
 	% Yield Moore neighborhood for a given position.
 	(X2 is X1 + 1, Y2 is Y1, coordinate_exists([X2, Y1]));
 	(X2 is X1 + 1, Y2 is Y1 + 1, coordinate_exists([X2, Y2]));
@@ -110,7 +110,9 @@ initialize_variables() :-
 	% rule get_random_position_not_covid().
 	assert(agent([0, 0])),
 	assert(optimal([])),
- 	assert(minimal_path(100000)).
+	grid_size([MaximalX, MaximalY]),
+	MinimalPathLength is  MaximalX * MaximalY + 1, 
+ 	assert(minimal_path(MinimalPathLength)).
 
 
 create_covid() :-
@@ -177,7 +179,7 @@ set_map() :-
 	assert(doctor([4, 4])).
 
 
-print_map(X, Y) :-
+print_map(X, _) :-
 	% The rule iteratively decrease the index of the cell along X-axis,
 	% so when this index becomes negative, the outputing of map is finished
 	X == -1, nl, !.
@@ -198,9 +200,9 @@ print_map(X, Y) :-
 	% - actor position		A
 	% - home position 		H
 	% - cell in found path 	X
-	% - covid cell 		C
+	% - covid cell 			C
 	% - infected cell 		I
-	% - doctor position 		D
+	% - doctor position 	D
 	% - mask position 		M 
 	grid_size([_, MaximalY]),
 	Y \= MaximalY,
@@ -307,7 +309,7 @@ all_infected(InfectedPosition) :-
 	% Yield all infected positions, including covid cells and their Moore neighborhood.
 	(
 		covid(CovidPosition),
-		all_adjacent(CovidPosition, InfectedPosition)
+		get_adjacent(CovidPosition, InfectedPosition)
 	);
 	(
 		covid(InfectedPosition)
@@ -330,7 +332,7 @@ perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell) :-
 	% Then, check whether it was wisited.
 	% Finally, if agent does not have or did not visited the doctor,
 	% it check whether the cell is not infected.
-	all_adjacent(CurrentCell, NextCell),
+	get_adjacent(CurrentCell, NextCell),
 	\+ member(NextCell, ResultantPath),
 	(
 		(Mask == 1; Doctor == 1) -> true;
@@ -441,15 +443,14 @@ less_than_minimal_path(ResultantPath, CurrentCell) :-
 
 
 
-search(CurrentCell, PreviousPath, Mask, Doctor, ResultantPath) :-
+search(CurrentCell, PreviousPath, _, _, ResultantPath) :-
 	% Searching algorith.
 	% The agent found the home, so it is done.
 	is_home(CurrentCell),
-	append(PreviousPath, [CurrentCell], ResultantPath),
-	length(ResultantPath, LengthResultantPath), !.
+	append(PreviousPath, [CurrentCell], ResultantPath), !.
 
 
-search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
+search(CurrentCell, PreviousPath, _, Doctor, NextResultantPath) :-
 	% Searching algorith.
 	% The agent found the mask, now it can go through infected cells.
 	% Optimization: cut the solution branch if the length of current path is greater than of the minimal found.
@@ -464,7 +465,7 @@ search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	search(CandidateCell, ResultantPath, MaskNew, Doctor, NextResultantPath).
 
 
-search(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
+search(CurrentCell, PreviousPath, Mask, _, NextResultantPath) :-
 	% Searching algorith.
 	% The agent found the doctor, now it can go through infected cells.
 	% Optimization: cut the solution branch if the length of current path is greater than of the minimal found.
@@ -530,6 +531,9 @@ backtrack(Length, Path) :-
 test(Length, Path) :-
 	% Test function.
 
+	% Note the starting time.
+	get_time(StartTime),
+
 	% Get rid of all out-of-date facts.
 	prepare(),
 
@@ -546,7 +550,7 @@ test(Length, Path) :-
 	%        resolvable_map3_9x9(), impossible_map1_9x9(), ... , impossible_map2_9x9().
 
 	% Comment out the odd:
-	 generate_map(),
+	generate_map(),
 	% set_map(),
 	% resolvable_map1_9x9(), 
 	% resolvable_map2_9x9(), 
@@ -561,4 +565,10 @@ test(Length, Path) :-
 	backtrack(Length, Path),
 
 	% Display the map with found by backtracking shortest path.
-	once(map_with_path()).
+	once(map_with_path()),
+
+	% Note the finishing time.
+	get_time(EndTime),
+	% Output the runtime.
+	ExecutionTime is EndTime - StartTime,
+	write("Execution time: "), write(ExecutionTime), write(" s.").
