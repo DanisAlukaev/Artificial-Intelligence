@@ -1,11 +1,28 @@
+% Solution for the Home Assignment 1.
+%
+% Student:			Danis Alukaev
+% Group:			BS19-02
+% Student ID:		19BS551
+
+
+:- ensure_loaded('init.pl').
+:- ensure_loaded('map.pl').
+:- ensure_loaded('backtracking (shared).pl').
+:- ensure_loaded('backtracking (variant 1).pl').
 :- ensure_loaded('backtracking (variant 2).pl').
 
 
-test(Length, Path) :-
-	% Test function.
+set_map() :-
+	% Specify postions in a form of [X, Y] as it done below.
+	assert(covid([4, 1])),
+ 	assert(covid([7, 6])),
+ 	assert(home([7, 1])),
+	assert(mask([1, 7])),
+	assert(doctor([4, 4])).
 
-	% Note the starting time.
-	get_time(StartTime),
+
+test() :-
+	% Test function.
 
 	% Get rid of all out-of-date facts.
 	prepare(),
@@ -34,14 +51,7 @@ test(Length, Path) :-
 	% Display the map.
 	once(original_map()),
 
-	% Backtracking approach.
-	backtrack(Length, Path),
-
-	% Display the map with found by backtracking shortest path.
-	once(map_with_path()),
-
-	% Note the finishing time.
-	get_time(EndTime),
-	% Output the runtime.
-	ExecutionTime is EndTime - StartTime,
-	write("Execution time: "), write(ExecutionTime), write(" s.").
+	% Backtracking (variant 1).
+	start_backtracking_v1(),
+	% Backtracking (variant 2).
+	start_backtracking_v2().
