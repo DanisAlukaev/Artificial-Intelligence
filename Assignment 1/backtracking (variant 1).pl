@@ -427,8 +427,11 @@ prioritize([Cell|Tail], PrioritizedCandidates, Result) :-
 	% Calculate the Chebyshev distance from candidate cell to home.
 	% Use this distance as priority of this cell: the lower the priority the better.
 	% Priority and position of cell are stored as structures.
+	grid_size([MaximalX, MaximalY]),
+	MaximalLengthPath is MaximalX * MaximalY,
 	distance_home(Cell, DistanceHome),
-	PrioritizedCandidate = (DistanceHome, Cell),
+	Priority is (DistanceHome - MaximalLengthPath) / MaximalLengthPath + 1,
+	PrioritizedCandidate = (Priority, Cell),
 	append(PrioritizedCandidates, [PrioritizedCandidate], ResultantPrioritizedCandidates),
 	prioritize(Tail, ResultantPrioritizedCandidates, Result).
 
@@ -511,8 +514,8 @@ backtrack(Length, Path) :-
 	% Find all solution to goal using setof function.
 	% In case it managed to locate the optimal path the agent has won.
 	% Output number of steps and optimal path.
-	setof((Length, Path), solve(Length, Path), Solutions),
- 	nth0(0, Solutions, Optimal, _),
+	setof((Length, Path), solve(Length, Path), Paths),
+ 	nth0(0, Paths, Optimal, _),
   	Optimal = (OptimalSteps, OptimalPath),
   	StepsWithoutFirstCell is OptimalSteps - 1,
   	retractall(optimal(_)),
@@ -526,49 +529,3 @@ backtrack(Length, Path) :-
 	Length is 0, 
 	Path = [],
 	write("Lost.").
-
-
-test(Length, Path) :-
-	% Test function.
-
-	% Note the starting time.
-	get_time(StartTime),
-
-	% Get rid of all out-of-date facts.
-	prepare(),
-
-	% Set dimensions of the lattice.  
-	assert(grid_size([9, 9])),
-
-	% Initialize variables to store positions of agent, covids, home, mask doctor 
-	% and starting minimal length of the path.
-	initialize_variables(),
-
-	% Either generate map randomly using rule generate_map()
-	%        or set map manually using rule set_map()
-	%        or use one of the prepared maps using rules resolvable_map1_9x9(), ... ,
-	%        resolvable_map3_9x9(), impossible_map1_9x9(), ... , impossible_map2_9x9().
-
-	% Comment out the odd:
-	generate_map(),
-	% set_map(),
-	% resolvable_map1_9x9(), 
-	% resolvable_map2_9x9(), 
-	% resolvable_map3_9x9(), 
-	% impossible_map1_9x9(),
-	% impossible_map2_9x9(),
-
-	% Display the map.
-	once(original_map()),
-
-	% Backtracking approach.
-	backtrack(Length, Path),
-
-	% Display the map with found by backtracking shortest path.
-	once(map_with_path()),
-
-	% Note the finishing time.
-	get_time(EndTime),
-	% Output the runtime.
-	ExecutionTime is EndTime - StartTime,
-	write("Execution time: "), write(ExecutionTime), write(" s.").
