@@ -10,15 +10,19 @@
 :- ensure_loaded('backtracking (shared).pl').
 :- ensure_loaded('backtracking (variant 1).pl').
 :- ensure_loaded('backtracking (variant 2).pl').
+:- ensure_loaded('A-star (variant 1).pl').
+:- ensure_loaded('A-star (variant 2).pl').
+:- ensure_loaded('A-star (shared).pl').
+
 
 
 set_map() :-
 	% Specify postions in a form of [X, Y] as it done below.
-	assert(covid([4, 1])),
- 	assert(covid([7, 6])),
- 	assert(home([7, 1])),
-	assert(mask([1, 7])),
-	assert(doctor([4, 4])).
+	assert(covid([0, 6])),
+ 	assert(covid([2, 8])),
+ 	assert(home([0, 8])),
+	assert(mask([8, 0])),
+	assert(doctor([8, 8])).
 
 
 test() :-
@@ -40,11 +44,11 @@ test() :-
 	%        resolvable_map3_9x9(), impossible_map1_9x9(), ... , impossible_map2_9x9().
 
 	% Comment out the odd:
-	% generate_map(),
+	 generate_map(),
 	% set_map(),
 	% resolvable_map1_9x9(), 
 	% resolvable_map2_9x9(), 
-	 resolvable_map3_9x9(), 
+	% resolvable_map3_9x9(), 
 	% impossible_map1_9x9(),
 	% impossible_map2_9x9(),
 
@@ -53,5 +57,13 @@ test() :-
 
 	% Backtracking (variant 1).
 	start_backtracking_v1(),
+	
 	% Backtracking (variant 2).
-	start_backtracking_v2().
+	start_backtracking_v2(),
+
+	% A-star algorithm (variant 1).
+	start_a_star_v1(),
+
+	% A-star algorithm (variant 2).
+	start_a_star_v2().
+
