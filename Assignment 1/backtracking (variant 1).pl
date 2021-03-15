@@ -40,7 +40,7 @@ search_v1(CurrentCell, PreviousPath, _, Doctor, NextResultantPath) :-
 	less_than_minimal_path(ResultantPath, CurrentCell),
 	setof(NextCell, perceive(CurrentCell, ResultantPath, MaskNew, Doctor, NextCell), Candidates),
 	prioritize_v1(Candidates, [], PrioritizedCandidates),
-	sort(0, @<, PrioritizedCandidates, Sorted),
+	sort(0, @=<, PrioritizedCandidates, Sorted),
 	get_candidate(Sorted, CandidateCell),
 	search_v1(CandidateCell, ResultantPath, MaskNew, Doctor, NextResultantPath).
 
@@ -55,7 +55,7 @@ search_v1(CurrentCell, PreviousPath, Mask, _, NextResultantPath) :-
 	less_than_minimal_path(ResultantPath, CurrentCell),
 	setof(NextCell, perceive(CurrentCell, ResultantPath, Mask, DoctorNew, NextCell), Candidates),
 	prioritize_v1(Candidates, [], PrioritizedCandidates),
-	sort(0, @<, PrioritizedCandidates, Sorted),
+	sort(0, @=<, PrioritizedCandidates, Sorted),
 	get_candidate(Sorted, CandidateCell),
 	search_v1(CandidateCell, ResultantPath, Mask, DoctorNew, NextResultantPath).
 
@@ -69,7 +69,7 @@ search_v1(CurrentCell, PreviousPath, Mask, Doctor, NextResultantPath) :-
 	less_than_minimal_path(ResultantPath, CurrentCell),
 	setof(NextCell, perceive(CurrentCell, ResultantPath, Mask, Doctor, NextCell), Candidates),
 	prioritize_v1(Candidates, [], PrioritizedCandidates),
-	sort(0, @<, PrioritizedCandidates, Sorted),
+	sort(0, @=<, PrioritizedCandidates, Sorted),
 	get_candidate(Sorted, CandidateCell), 
 	search_v1(CandidateCell, ResultantPath, Mask, Doctor, NextResultantPath).
 
