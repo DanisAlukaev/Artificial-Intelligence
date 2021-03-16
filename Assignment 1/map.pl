@@ -226,7 +226,7 @@ map_with_path() :-
 resolvable_map1_9x9() :-
 	assert(covid([0, 2])),
  	assert(covid([6, 6])),
- 	assert(home([3, 0])),
+ 	assert(home([8, 6])),
 	assert(mask([5, 2])),
 	assert(doctor([3, 3])).
 
@@ -234,9 +234,9 @@ resolvable_map1_9x9() :-
 resolvable_map2_9x9() :-
  	assert(covid([1, 2])),
  	assert(covid([3, 0])),
- 	assert(home([3, 2])),
+ 	assert(home([3, 7])),
 	assert(mask([1, 0])),
-	assert(doctor([4, 3])).
+	assert(doctor([8, 0])).
 
 
 resolvable_map3_9x9() :-
@@ -247,17 +247,25 @@ resolvable_map3_9x9() :-
 	assert(doctor([3, 8])).
 
 
+resolvable_map4_9x9() :-
+ 	assert(covid([3, 6])),
+ 	assert(covid([8, 3])),
+ 	assert(home([4, 8])),
+	assert(mask([3, 0])),
+	assert(doctor([2, 1])).
+
+
 impossible_map1_9x9() :-
- 	assert(covid([1, 2])),
- 	assert(covid([3, 0])),
- 	assert(home([3, 2])),
-	assert(mask([1, 4])),
-	assert(doctor([4, 3])).
+ 	assert(covid([2, 0])),
+ 	assert(covid([0, 2])),
+ 	assert(home([1, 6])),
+	assert(mask([5, 2])),
+	assert(doctor([6, 6])).
 
 
 impossible_map2_9x9() :-
- 	assert(covid([0, 1])),
- 	assert(covid([8, 2])),
- 	assert(home([6, 7])),
-	assert(mask([2, 6])),
-	assert(doctor([0, 5])).
+ 	assert(covid([1, 5])),
+ 	assert(covid([3, 7])),
+ 	assert(home([1, 8])),
+	assert(mask([1, 7])),
+	assert(doctor([0, 7])).

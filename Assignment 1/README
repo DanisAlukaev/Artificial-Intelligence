@@ -1,0 +1,22 @@
+Solution for the Home Assignment 1.
+
+Student:	Danis Alukaev
+Group:		BS19-02
+Student ID:	19BS551
+
+This archive contains 9 files with the implementation of the backtracking search algorithm and A-star search algorithm on the prolog.
+The test function (rule) is located and available in the file test.pl. There you can specify the size of grid and choose the method of map generation.
+By default there are used 9×9 grid size and random generation of the map. One can also choose one the prepared maps or set the positions of covids, mask, doctor and home directly 
+in the rule set_map(). Following instructions on how to set up the environment are written in the comments to the code in the file test.pl
+
+In order to run the code, download the SWI-Prolog from the official web-site https://www.swi-prolog.org/download/stable
+Following instructions will be performed via command line interface (CLI):
+
+Go to the CLI of SWI Prolog:
+	>  swipl
+
+Connect the source file:
+	?- ['/absolute/path/to/file/test.pl'].
+
+Run the test function (rule):
+	?- test().

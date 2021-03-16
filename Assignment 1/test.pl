@@ -19,11 +19,11 @@
 
 set_map() :-
 	%% Specify postions in a form of [X, Y] as it done below.
-	assert(covid([0, 6])),
- 	assert(covid([2, 8])),
- 	assert(home([0, 8])),
-	assert(mask([8, 0])),
-	assert(doctor([8, 8])).
+	assert(covid([1, 2])),
+ 	assert(covid([3, 0])),
+ 	assert(home([3, 7])),
+	assert(mask([1, 0])),
+	assert(doctor([8, 0])).
 
 
 test() :-
@@ -66,6 +66,7 @@ test() :-
 	%% resolvable_map1_9x9(), 
 	%% resolvable_map2_9x9(), 
 	%% resolvable_map3_9x9(), 
+	%% resolvable_map4_9x9(), 
 	%% impossible_map1_9x9(),
 	%% impossible_map2_9x9(),
 
@@ -75,10 +76,10 @@ test() :-
 	%% ----------------------------------------------------------------------------------
 	%% 								ALGORITHMS RUNNING SECTION
 
-	% Backtracking (variant 1).
+	%% Backtracking (variant 1).
 	start_backtracking_v1(),
 	
-	% Backtracking (variant 2).
+	%% Backtracking (variant 2).
 	start_backtracking_v2(),
 
 	% A-star algorithm (variant 1).
