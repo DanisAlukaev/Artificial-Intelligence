@@ -5,21 +5,24 @@
 %% Student ID: 		19BS551
 
 %% The algorithm was adapted from the lecture slides of the week 5 (slides 33-35) on Artificial Intelligence course.
+%% As priority there taken the sum of cost at the given cell and Manhattan distance from this point to home.
 
 
 process_cell_v2(EvaluatedCurrentCell, NextCell) :-
-	%% Candidate cell IS NOT in the open list.
+	%% [IMPORTANT] Variant 2 difference.
+
+	%% Get the locations of cells in open, closed lists.
 	open(Open),
 	unpack_cells(Open, [], OpenCells),
-
 	closed(Closed),
 	unpack_cells(Closed, [], ClosedCells),
-
 	(
+		%% Candidate is in the closed list.
 		member(NextCell, ClosedCells) ->
 			nth0(Index, ClosedCells, NextCell),
 			nth0(Index, Closed, Cell),
 
+			%% Get the priority of cell with same location.
 			Cell = (_, _, PriorityCell, _),
 			%% Unpack the current cell.
 			EvaluatedCurrentCell = (_, CostCurrentCell, _, _),
@@ -27,21 +30,21 @@ process_cell_v2(EvaluatedCurrentCell, NextCell) :-
 			CostNextCell is CostCurrentCell + 1,
 			%% Get the distance to home.
 			manhattan_distance_home(NextCell, DistanceHome),
+			%% Compute the priority.
 			PriorityNextCell is CostNextCell + DistanceHome,
-
 			(
-			PriorityCell < PriorityNextCell ->
-				true;
-				%% Update the open list.
-				append(Open, [Cell], OpenUpdated),
-				sort(2, @=<, OpenUpdated, SortedOpenUpdated),
-
-				%% Update the open list globally.
-				retractall(open(_)),
-				assert(open(SortedOpenUpdated))
+				%% Check that priority of cell with same location is less than the priority of next cell.
+				PriorityCell < PriorityNextCell ->
+					true
+					; %% Update the open list.
+					append(Open, [Cell], OpenUpdated),
+					sort(2, @=<, OpenUpdated, SortedOpenUpdated),
+					%% Update the open list globally.
+					retractall(open(_)),
+					assert(open(SortedOpenUpdated))
 			)
-		;
-		(
+		;(
+			%% Candidate is not in the open list.
 			\+ member(NextCell, OpenCells) ->
 			(
 				%% Unpack the current cell.
@@ -51,11 +54,13 @@ process_cell_v2(EvaluatedCurrentCell, NextCell) :-
 				%% Get the distance to home.
 				manhattan_distance_home(NextCell, DistanceHome),
 				(
+					%% Take into account the cells adjacent to the candidate.
+					%% Variant 2 implementation.
 					get_adjacent(NextCell, AdjacentCell), all_infected(AdjacentCell) ->
 						Overhead = DistanceHome
 					; Overhead = 0
-
 				),
+				%% Compute the priority of candidate cell.
 				PriorityNextCell is CostNextCell + DistanceHome + Overhead,
 				%% Create a new entry with candidate cell.
 				EvaluatedNextCell = (NextCell, CostNextCell, PriorityNextCell, CurrentCell),
@@ -67,8 +72,7 @@ process_cell_v2(EvaluatedCurrentCell, NextCell) :-
 				%% Update the open list globally.
 				retractall(open(_)),
 				assert(open(SortedOpenUpdated))
-			)
-			;
+			);
 				%% Get index of entry with the same location from open list.
 				nth0(IndexEvaluatedNextCell, OpenCells, NextCell),
 				%% Get an entry with next cell.
@@ -83,11 +87,10 @@ process_cell_v2(EvaluatedCurrentCell, NextCell) :-
 				ExpectedCost is CostCurrentCell + 1,
 				(
 					ExpectedCost < CostNextCell ->
-						%% Get rid of outdated enry in the open list.
+						%% Get rid of outdated entry in the open list.
 						delete(Open, EvaluatedNextCell, OpenPop),
 
 						%% Compose new entry for candidate cell.
-
 						manhattan_distance_home(NextCell, DistanceHome),
 						PriorityNextCell is CostNextCell + DistanceHome, 
 						NewEvaluatedNextCell = (NextCell, ExpectedCost, PriorityNextCell, CurrentCell),
@@ -108,30 +111,34 @@ process_candidate_v2(_, _, [], _).
 
 
 process_candidate_v2(Mask, Doctor, [Candidate|Tail], EvaluatedCurrentCell) :-
-	%% Traverse the list with candidate cells and apply the rule to process each of them.
+	%% Process the candidate cells given in the list.
 	closed(Closed),
-	%% Check the candidate cell is not closed.
 	unpack_cells(Closed, [], ClosedCells),
 	(
-		%% Check the candidate cell is not blocked or is in the closed list.
+		%% Check the candidate cell is not closed.
 		\+ member(Candidate, ClosedCells) -> 
 			(
 				Mask -> 
+					%% Consider the case when mask was taken.
 					mask_path(MaskPath),
-					(
+					(	
+						%% Process all candidate cells that are not in the path to mask.
 						\+ member(Candidate, MaskPath) -> 
 							process_cell_v2(EvaluatedCurrentCell, Candidate)
 							; true
 					)				
 					;(
+						%% Consider the case when doctor was taken.
 						Doctor ->
 							doctor_path(DoctorPath),
 							(
+								%% Process all candidate cells that are not in the path to doctor.
 								\+ member(Candidate, DoctorPath) -> 
 									process_cell_v2(EvaluatedCurrentCell, Candidate)
 									; true
 							)					
 							;( 
+								%% In case there is no immunity, consider only not infected cells.
 								not_infected(Candidate) -> 
 									process_cell_v2(EvaluatedCurrentCell, Candidate)
 									; true
@@ -140,22 +147,23 @@ process_candidate_v2(Mask, Doctor, [Candidate|Tail], EvaluatedCurrentCell) :-
 			)
 			; true
 	),
+	%% Run the rule again.
 	process_candidate_v2(Mask, Doctor, Tail, EvaluatedCurrentCell).
 
 
 search_a_star_v2(_, _) :-
-	%% Implements while(Length =/= 0) loop.
+	%% A-star searching algorithm.
+	%% There are no cells in the open list.
 	open(Open), 
-	length(Open, LengthOpen), LengthOpen == 0, !.
+	length(Open, LengthOpen), 
+	LengthOpen == 0, !.
 
 
 search_a_star_v2(Mask, Doctor) :-
-	%% Implements while(Length =/= 0) loop.
+	%% A-star searching algorithm.
 	%% Get the open and closed lists.
 	open(Open),
 	closed(Closed),
-	%% write("Open: "), write(Open),nl,
-	%% write("Closed: "), write(Closed),nl, 
 
 	%% Check that open list is non-empty.
 	length(Open, LengthOpen), LengthOpen @> 0,
@@ -182,61 +190,77 @@ search_a_star_v2(Mask, Doctor) :-
 
 
 a_star_v2() :-
-	%% Create open and closed lists.
+	%% Rule to display the result of the algorithm run.
+	
+	%% Run the A-star algorithm from the agent position without immunity.
 	agent(AgentPosition),
 	initialize_open_closed_lists(AgentPosition),
-
 	search_a_star_v2(false, false),
+	%% Get the position of Home, Mask, Doctor.
 	home(HomePosition),
 	mask(MaskPosition),
 	doctor(DoctorPosition),
-
+	%% Restore the path to Home, Mask, Doctor.
 	restore_path(AgentPosition, HomePosition, [], PathWOImmunity),
 	restore_path(AgentPosition, MaskPosition, [], MaskPathWOImmunity),
 	restore_path(AgentPosition, DoctorPosition, [], DoctorPathWOImmunity),
-
+	%% Save the paths to mask and doctor globally.
 	retractall(mask_path(_)),
 	retractall(doctor_path(_)),
 	assert(mask_path(MaskPathWOImmunity)),
 	assert(doctor_path(DoctorPathWOImmunity)),
 
+	%% Run the A-star algorithm from the mask position with immunity.
 	initialize_open_closed_lists(MaskPosition),
 	search_a_star_v2(true, false),
+	%% Restore the path to Home from Mask.
 	restore_path(MaskPosition, HomePosition, [], MaskPathImmunity),
 
+	%% Run the A-star algorithm from the doctor position with immunity.
 	initialize_open_closed_lists(DoctorPosition),
 	search_a_star_v2(false, true),
+	%% Restore the path to Home from Doctor.
 	restore_path(DoctorPosition, HomePosition, [], DoctorPathImmunity),
 
+	%% Merge paths from Agent to Mask with path from Mask to Home and 
+	%% path from Agent to Mask with path from Mask to Home.
 	(
-			MaskPathWOImmunity == [] -> MaskFinal = [];
-			delete(MaskPathWOImmunity, MaskPosition, NewMaskFinal), 
-			append(NewMaskFinal, MaskPathImmunity, MaskFinal)		
+			MaskPathWOImmunity == [] -> 
+				MaskFinal = []
+				; delete(MaskPathWOImmunity, MaskPosition, NewMaskFinal), 
+				append(NewMaskFinal, MaskPathImmunity, MaskFinal)		
 	),
 	(
-			DoctorPathWOImmunity == [] -> DoctorFinal = [];
-			delete(DoctorPathWOImmunity, DoctorPosition, NewDoctorFinal), 
-			append(NewDoctorFinal, DoctorPathImmunity, DoctorFinal)		
+			DoctorPathWOImmunity == [] -> 
+				DoctorFinal = []
+				; delete(DoctorPathWOImmunity, DoctorPosition, NewDoctorFinal), 
+				append(NewDoctorFinal, DoctorPathImmunity, DoctorFinal)		
 	),
 
+	%% Determine the lenghts of obtained paths.
 	length(PathWOImmunity, LengthPathWOImmunity),
 	length(MaskFinal, LengthMaskFinal),
 	length(DoctorFinal, LengthDoctorFinal),
 
+	%% Get list of non-empty paths.
 	get_non_zero_paths([(LengthPathWOImmunity, PathWOImmunity), (LengthMaskFinal, MaskFinal), (LengthDoctorFinal, DoctorFinal)], [], NonZeroSolutions),
-
+	%% Get the shortest paths.
 	sort(0, @=<, NonZeroSolutions, SortedSolutions),
 	nth0(0, SortedSolutions, PathCompound),
-	%% Output necessary information.
+	%% Output number of steps and optimal path.
 	PathCompound = (LengthPath, Path),
 	StepsWithoutFirstCell is LengthPath - 1,
 	retractall(optimal(_)),
   	assert(optimal(Path)),
-	write("Win."), nl, write("Number of steps: "), write(StepsWithoutFirstCell), nl, write("Path: "), write(Path), nl,
+	write("Win."), nl, 
+	write("Number of steps: "), write(StepsWithoutFirstCell), nl, 
+	write("Path: "), write(Path), nl,
+  	%% Display the map with found by backtracking shortest path.
 	once(map_with_path()), !.
 
 
 a_star_v2() :-
+	%% Rule to display the result of the algorithm run.
 	%% In case no path was found, the agent has lost.
 	%% Set number of steps to zero and path to empty list.
 	write("Lost."), nl.

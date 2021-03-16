@@ -1,12 +1,12 @@
-% Solution for the Home Assignment 1.
-%
-% Student:			Danis Alukaev
-% Group:			BS19-02
-% Student ID:		19BS551
+%% Solution for the Home Assignment 1.
+
+%% Student:			Danis Alukaev
+%% Group:			BS19-02
+%% Student ID: 		19BS551
 
 
 prepare() :-
-	% remove all previously created facts.
+	%% Remove all previously created facts.
 	retractall(grid_size(_)),
 	retractall(agent(_)),
 	retractall(covid(_)),
@@ -18,7 +18,7 @@ prepare() :-
 
 
 reinitialize_variables() :-
-	% Remove unnecessary items.
+	%% Remove supportive facts.
 	retractall(covid([-1, -1])),
 	retractall(home([-1, -1])),
 	retractall(mask([-1, -1])),
@@ -26,7 +26,7 @@ reinitialize_variables() :-
 
 
 assert_dummy() :-
-	% Supprtive facts.
+	%% Supprtive facts.
 	assert(covid([-1, -1])),
 	assert(home([-1, -1])),
 	assert(mask([-1, -1])),
@@ -34,9 +34,9 @@ assert_dummy() :-
 
 
 initialize_variables() :-
-	% Set the original position of an agent, starting length of minimal path, and
-	% create dummy positions for a home, mask, doctor to simplify code for the 
-	% rule get_random_position_not_covid().
+	%% Set the original position of an agent, starting length of minimal path, and
+	%% create dummy positions for a home, mask, doctor to simplify code for the 
+	%% rule get_random_position_not_covid().
 	assert(agent([0, 0])),
 	assert(optimal([])),
 	grid_size([MaximalX, MaximalY]),
