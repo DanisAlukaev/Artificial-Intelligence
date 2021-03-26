@@ -28,7 +28,7 @@ def run_evolution(original_image, image_size, symbols_list):
     current_state = (symbols_list, fitness.fitness_function(original_image, canvas.copy()))
 
     # duration of evolution is 1000 generation
-    for generation in range(200):
+    for generation in range(1000):
         # each new generation consisting of 500 mutated descendants
         individuals = []
         for mutation in range(50):

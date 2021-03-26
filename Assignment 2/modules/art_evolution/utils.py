@@ -37,7 +37,7 @@ def get_random_color():
     red = randint(0, 255)
     green = randint(0, 255)
     blue = randint(0, 255)
-    alpha = randint(0, 255)
+    alpha = 255
     return red, green, blue, alpha
 
 
