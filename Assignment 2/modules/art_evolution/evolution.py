@@ -3,55 +3,33 @@ import modules.art_evolution.utils as utils
 import modules.art_evolution.fitness as fitness
 from operator import itemgetter
 import time
+from modules.art_evolution.models import Chromosome
 from multiprocessing import Manager, Process, Pool
 
 
-def mutate(symbols_list):
-    n = len(symbols_list)
-    # choose the random symbol
-    random_index = randint(0, n - 1)
-    # auxiliary list
-    mutated_list = symbols_list.copy()
-
-    # mutate the color of symbol
-    mutated_list[random_index]['color'] = utils.get_random_color()
-    # change the relative priority of symbol
-    # important for drawing
-    mutated_list = utils.shuffle(mutated_list, random_index)
-
-    # ignore the font size
-    # mutated_list[random_index]['font_size'] = utils.get_random_font_size()
-    return mutated_list
+def create_individual(parent, original_image, individuals):
+    mutated_chromosome = parent[0].mutate()
+    mutated_image = utils.restore_image(mutated_chromosome)
+    mutated_score = fitness.fitness_function(original_image, mutated_image)
+    individuals.append((mutated_chromosome, mutated_score))
 
 
-def create_individual(current_state, image_size, original_image, individuals):
-    mutated_list = mutate(current_state[0])
-    mutated_image = utils.restore_image(mutated_list, image_size)
-    score_mutated = fitness.fitness_function(original_image, mutated_image)
-    individuals.append((mutated_list, score_mutated))
-
-
-def run_evolution(original_image, image_size, symbols_list):
+def run_evolution(original_image, parent: Chromosome):
     # set the randomly generated canvas as current state
-    canvas = utils.restore_image(symbols_list, image_size)
-    current_state = (symbols_list, fitness.fitness_function(original_image, canvas.copy()))
+    canvas = utils.restore_image(parent)
+    current_state = (parent, fitness.fitness_function(original_image, canvas))
 
     # duration of evolution is 1000 generation
     for generation in range(1000):
         starttime = time.time()
-        # each new generation consisting of 500 mutated descendants
-        processes = []
-
         with Manager() as manager:
             individuals = manager.list()
             pool = Pool(5)
+            # each new generation consisting of 500 mutated descendants
             for mutation in range(50):
-                pool.apply_async(create_individual,
-                                 (current_state, image_size, original_image, individuals,))
-
+                pool.apply_async(create_individual, (current_state, original_image, individuals,))
             pool.close()
             pool.join()
-
             # sort the list of individuals by the similarity index
             sorted_individuals = sorted(individuals, key=itemgetter(1), reverse=True)
 
@@ -61,5 +39,5 @@ def run_evolution(original_image, image_size, symbols_list):
             current_state = sorted_individuals[0]
         print("Evaluation: ", current_state[1])
         print('Time taken = {} seconds \n'.format(time.time() - starttime))
-        utils.restore_image(current_state[0], image_size).save('documents/output/' + str(generation) + '.png')
-    return utils.restore_image(current_state[0], image_size)
+        utils.restore_image(current_state[0]).save('documents/output/' + str(generation) + '.png')
+    return utils.restore_image(current_state[0])
