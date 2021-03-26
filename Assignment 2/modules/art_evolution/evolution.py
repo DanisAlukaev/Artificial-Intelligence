@@ -44,15 +44,13 @@ def run_evolution(original_image, image_size, symbols_list):
 
         with Manager() as manager:
             individuals = manager.list()
-
+            pool = Pool(5)
             for mutation in range(50):
-                process = Process(target=create_individual,
-                                  args=(current_state, image_size, original_image, individuals,))
-                processes.append(process)
-                process.start()
+                pool.apply_async(create_individual,
+                                 (current_state, image_size, original_image, individuals,))
 
-            for process in processes:
-                process.join()
+            pool.close()
+            pool.join()
 
             # sort the list of individuals by the similarity index
             sorted_individuals = sorted(individuals, key=itemgetter(1), reverse=True)
