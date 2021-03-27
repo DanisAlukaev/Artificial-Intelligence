@@ -1,25 +1,30 @@
-from random import randint, choice
+from random import randint, choice, random, shuffle
+import modules.art_evolution.utils as utils
+from operator import itemgetter
+from skimage.metrics import structural_similarity
+import numpy as np
+import bisect
 
 
-class Chromosome:
+class Individual:
 
-    def __init__(self, image_size, symbols=None):
+    def __init__(self, image_size, chromosome=None):
         self.image_size = image_size
-        if symbols is None:
-            self.symbols = self._create_random_symbols()
+        if chromosome is None:
+            self.chromosome = self._initialize_random_genes()
         else:
-            self.symbols = symbols
+            self.chromosome = chromosome.copy()
 
-    def _create_random_symbols(self):
+    def _initialize_random_genes(self):
         # initialize list consisting of parameters for symbol representation
         # each entry is dictionary containing symbol, position, font_size, color keys
-        symbols = []
+        chromosome = []
 
-        # define number of genes in chromosome based on the size of input image
-        number_symbols = max(*self.image_size) * 2
+        # define number of genes (symbols) in chromosome based on the size of input image
+        number_genes = max(*self.image_size) * 2
 
         # generate symbols
-        for i in range(number_symbols):
+        for i in range(number_genes):
             # generate position
             symbol_position = self._get_random_position()
             # generate symbol
@@ -30,11 +35,17 @@ class Chromosome:
             symbol_size = self._get_random_font_size()
 
             # compose the entry
-            symbol_parameters = {'symbol': symbol, 'position': symbol_position, 'font_size': symbol_size,
-                                 'color': symbol_color}
-            # append the entry to list of symbols
-            symbols.append(symbol_parameters)
-        return symbols
+            gene = {'symbol': symbol, 'position': symbol_position, 'font_size': symbol_size, 'color': symbol_color}
+            # append gen to the chromosome
+            chromosome.append(gene)
+        return chromosome
+
+    def generate_sibling(self):
+        sibling_chromosome = self.chromosome.copy()
+        shuffle(sibling_chromosome)
+        for gen in sibling_chromosome:
+            gen['color'] = self._get_random_color()
+        return Individual(self.image_size, sibling_chromosome)
 
     def _get_random_position(self):
         # randomly generate position on the image
@@ -64,27 +75,142 @@ class Chromosome:
         alpha = 255
         return red, green, blue, alpha
 
-    def _change_priority(self, symbols, index1):
-        # change priority of element with a given index
-        # symbols with a greater priority (smaller index) will be displayed on top of the others
-        list_length = len(symbols)
-        index2 = randint(0, list_length - 1)
-        tempo = symbols[index1]
-        symbols[index1] = symbols[index2]
-        symbols[index2] = tempo
-
     def mutate(self):
-        number_symbols = len(self.symbols)
+        mutations = [self._mutate_color, self._mutate_priority]
+        choice(mutations)()
+
+    def _mutate_color(self):
+        number_genes = len(self.chromosome)
         # choose the random symbol
-        random_index = randint(0, number_symbols - 1)
+        random_idx = randint(0, number_genes - 1)
         # auxiliary list
-        mutated_symbols = self.symbols.copy()
+        mutated_chromosome = self.chromosome.copy()
 
         # mutate the color of symbol
-        mutated_symbols[random_index]['color'] = self._get_random_color()
-        # change the relative priority of symbol
-        # important for drawing
-        self._change_priority(mutated_symbols, random_index)
+        mutated_chromosome[random_idx]['color'] = self._get_random_color()
+        self.chromosome = mutated_chromosome
 
-        mutated_chromosome = Chromosome(self.image_size, mutated_symbols)
-        return mutated_chromosome
+    def _mutate_priority(self):
+        number_genes = len(self.chromosome)
+        # choose the random symbol
+        gene1_idx = randint(0, number_genes - 1)
+        # auxiliary list
+        mutated_chromosome = self.chromosome.copy()
+
+        # swap two genes
+        # symbols with a greater priority (smaller index) will be displayed on top of the others
+        gene2_idx = randint(0, gene1_idx)
+        tempo = mutated_chromosome[gene1_idx]
+        mutated_chromosome[gene1_idx] = mutated_chromosome[gene2_idx]
+        mutated_chromosome[gene2_idx] = tempo
+
+        self.chromosome = mutated_chromosome
+
+
+class Population:
+
+    def __init__(self, original_image, population_size):
+        self.original_image = original_image
+        self.population_size = population_size
+        self.image_size = original_image.shape[:2]
+
+        population = []
+
+        progenitor = Individual(self.image_size)
+
+        total_fitness = 0
+        # randomly initialize set of individuals
+        for i in range(population_size):
+            individual_params = progenitor.generate_sibling()
+            population_entry = {'individual': individual_params}
+
+            individual = utils.restore_image(population_entry['individual'])
+            individual_fitness = self._calculate_fitness(individual)
+            population_entry['fitness'] = individual_fitness
+
+            total_fitness += population_entry['fitness']
+            population.append(population_entry)
+
+        for i in range(population_size):
+            probability = population[i]['fitness'] / total_fitness
+            population[i]['probability'] = probability
+
+        self.population = population
+        self.parents = []
+
+    def _calculate_fitness(self, individual):
+        # check the similarity index of the original and candidate image
+        individual = np.asarray(individual.convert('RGB'), dtype=np.int32)
+        score_candidate = structural_similarity(self.original_image, individual,
+                                                data_range=self.original_image.max() - individual.min(),
+                                                multichannel=True)
+        return score_candidate
+
+    def selection(self):
+        parents = []
+        for i in range(self.population_size):
+            parents.append([self._select_parent(), self._select_parent()])
+        self.parents = parents
+
+    def _select_parent(self):
+        boundaries = self._cumulative_distribution_function()
+        outcome = random()
+        parent_idx = bisect.bisect(boundaries, outcome)
+        return self.population[parent_idx]
+
+    def _cumulative_distribution_function(self):
+        boundaries = []
+        cumulative_sum = 0
+        probabilities = [individual['probability'] for individual in self.population]
+        for probability in probabilities:
+            cumulative_sum += probability
+            boundaries.append(cumulative_sum)
+        return boundaries
+
+    def crossover(self):
+        next_population = []
+        total_fitness = 0
+        for parents in self.parents:
+            parent1, parent2 = parents
+            number_genes = len(parent1['individual'].chromosome)
+            crossover_point = randint(1, number_genes - 2)
+
+            child1 = {'individual': Individual(self.image_size, parent1['individual'].chromosome)}
+            child2 = {'individual': Individual(self.image_size, parent2['individual'].chromosome)}
+
+            for i in range(crossover_point, number_genes):
+                child1['individual'].chromosome[i], child2['individual'].chromosome[i] = \
+                    child2['individual'].chromosome[i], child1['individual'].chromosome[i]
+
+            offspring_entry = choice([child1, child2])
+
+            offspring = utils.restore_image(offspring_entry['individual'])
+            offspring_fitness = self._calculate_fitness(offspring)
+            offspring_entry['fitness'] = offspring_fitness
+
+            total_fitness += offspring_entry['fitness']
+            next_population.append(offspring_entry)
+
+        for i in range(self.population_size):
+            probability = next_population[i]['fitness'] / total_fitness
+            next_population[i]['probability'] = probability
+
+        self.population = next_population
+
+    def mutation(self):
+        total_fitness = 0
+        for individual_entry in self.population:
+            if random() <= 0.5:
+                individual_entry['individual'].mutate()
+                individual = utils.restore_image(individual_entry['individual'])
+                individual_fitness = self._calculate_fitness(individual)
+                individual_entry['fitness'] = individual_fitness
+            total_fitness += individual_entry['fitness']
+
+        for i in range(self.population_size):
+            probability = self.population[i]['fitness'] / total_fitness
+            self.population[i]['probability'] = probability
+
+    def get_fittest(self):
+        sorted_population = sorted(self.population, key=itemgetter('fitness'), reverse=True)
+        return sorted_population[0]
