@@ -4,6 +4,7 @@ from operator import itemgetter
 from skimage.metrics import structural_similarity
 import numpy as np
 import bisect
+from multiprocessing import Manager, Pool, Value
 
 
 class Individual:
@@ -21,7 +22,7 @@ class Individual:
         chromosome = []
 
         # define number of genes (symbols) in chromosome based on the size of input image
-        number_genes = max(*self.image_size) * 2
+        number_genes = max(*self.image_size) * 3
 
         # generate symbols
         for i in range(number_genes):
@@ -56,7 +57,7 @@ class Individual:
 
     def _get_random_font_size(self):
         # randomly generate font size
-        font_size = randint(5, 250)
+        font_size = randint(5, 83)
         return font_size
 
     def _get_random_symbol(self):
@@ -114,29 +115,37 @@ class Population:
         self.population_size = population_size
         self.image_size = original_image.shape[:2]
 
-        population = []
+        with Manager() as manager:
+            population = manager.list()
+            pool = Pool(6)
+            progenitor = Individual(self.image_size)
+            total_fitness = 0
+            # randomly initialize set of individuals
+            for i in range(population_size):
+                pool.apply_async(self._multiprocessing_init, (progenitor, population,))
+            pool.close()
+            pool.join()
 
-        progenitor = Individual(self.image_size)
+            population = list(population)
+            for i in range(population_size):
+                total_fitness += population[i]['fitness']
 
-        total_fitness = 0
-        # randomly initialize set of individuals
-        for i in range(population_size):
-            individual_params = progenitor.generate_sibling()
-            population_entry = {'individual': individual_params}
+            for i in range(population_size):
+                probability = population[i]['fitness'] / total_fitness
+                population[i]['probability'] = probability
 
-            individual = utils.restore_image(population_entry['individual'])
-            individual_fitness = self._calculate_fitness(individual)
-            population_entry['fitness'] = individual_fitness
+            self.population = population
+            self.parents = []
 
-            total_fitness += population_entry['fitness']
-            population.append(population_entry)
+    def _multiprocessing_init(self, progenitor, population):
+        individual_params = progenitor.generate_sibling()
+        population_entry = {'individual': individual_params}
 
-        for i in range(population_size):
-            probability = population[i]['fitness'] / total_fitness
-            population[i]['probability'] = probability
+        individual = utils.restore_image(population_entry['individual'])
+        individual_fitness = self._calculate_fitness(individual)
+        population_entry['fitness'] = individual_fitness
 
-        self.population = population
-        self.parents = []
+        population.append(population_entry)
 
     def _calculate_fitness(self, individual):
         # check the similarity index of the original and candidate image
@@ -168,48 +177,73 @@ class Population:
         return boundaries
 
     def crossover(self):
-        next_population = []
-        total_fitness = 0
-        for parents in self.parents:
-            parent1, parent2 = parents
-            number_genes = len(parent1['individual'].chromosome)
-            crossover_point = randint(1, number_genes - 2)
+        with Manager() as manager:
+            next_population = manager.list()
+            pool = Pool(6)
+            total_fitness = 0
 
-            child1 = {'individual': Individual(self.image_size, parent1['individual'].chromosome)}
-            child2 = {'individual': Individual(self.image_size, parent2['individual'].chromosome)}
+            for parents in self.parents:
+                pool.apply_async(self._multiprocessing_crossover, (parents, next_population,))
+            pool.close()
+            pool.join()
 
-            for i in range(crossover_point, number_genes):
-                child1['individual'].chromosome[i], child2['individual'].chromosome[i] = \
-                    child2['individual'].chromosome[i], child1['individual'].chromosome[i]
+            next_population = list(next_population)
+            for i in range(self.population_size):
+                total_fitness += next_population[i]['fitness']
 
-            offspring_entry = choice([child1, child2])
+            for i in range(self.population_size):
+                probability = next_population[i]['fitness'] / total_fitness
+                next_population[i]['probability'] = probability
 
-            offspring = utils.restore_image(offspring_entry['individual'])
-            offspring_fitness = self._calculate_fitness(offspring)
-            offspring_entry['fitness'] = offspring_fitness
+            self.population = next_population
 
-            total_fitness += offspring_entry['fitness']
-            next_population.append(offspring_entry)
+    def _multiprocessing_crossover(self, parents, next_population):
+        parent1, parent2 = parents
+        number_genes = len(parent1['individual'].chromosome)
+        crossover_point = randint(1, number_genes - 2)
 
-        for i in range(self.population_size):
-            probability = next_population[i]['fitness'] / total_fitness
-            next_population[i]['probability'] = probability
+        child1 = {'individual': Individual(self.image_size, parent1['individual'].chromosome)}
+        child2 = {'individual': Individual(self.image_size, parent2['individual'].chromosome)}
 
-        self.population = next_population
+        for i in range(crossover_point, number_genes):
+            child1['individual'].chromosome[i], child2['individual'].chromosome[i] = \
+                child2['individual'].chromosome[i], child1['individual'].chromosome[i]
+
+        offspring_entry = choice([child1, child2])
+
+        offspring = utils.restore_image(offspring_entry['individual'])
+        offspring_fitness = self._calculate_fitness(offspring)
+        offspring_entry['fitness'] = offspring_fitness
+
+        next_population.append(offspring_entry)
 
     def mutation(self):
-        total_fitness = 0
-        for individual_entry in self.population:
-            if random() <= 0.5:
-                individual_entry['individual'].mutate()
-                individual = utils.restore_image(individual_entry['individual'])
-                individual_fitness = self._calculate_fitness(individual)
-                individual_entry['fitness'] = individual_fitness
-            total_fitness += individual_entry['fitness']
+        with Manager() as manager:
+            population = manager.list()
+            pool = Pool(6)
+            total_fitness = 0
 
-        for i in range(self.population_size):
-            probability = self.population[i]['fitness'] / total_fitness
-            self.population[i]['probability'] = probability
+            for individual_entry in self.population.copy():
+                pool.apply_async(self._multiprocessing_mutation, (individual_entry, population,))
+            pool.close()
+            pool.join()
+
+            population = list(population)
+            for i in range(self.population_size):
+                total_fitness += population[i]['fitness']
+
+            for i in range(self.population_size):
+                probability = population[i]['fitness'] / total_fitness
+                population[i]['probability'] = probability
+            self.population = population
+
+    def _multiprocessing_mutation(self, individual_entry, population):
+        if random() <= 0.5:
+            individual_entry['individual'].mutate()
+            individual = utils.restore_image(individual_entry['individual'])
+            individual_fitness = self._calculate_fitness(individual)
+            individual_entry['fitness'] = individual_fitness
+        population.append(individual_entry)
 
     def get_fittest(self):
         sorted_population = sorted(self.population, key=itemgetter('fitness'), reverse=True)
