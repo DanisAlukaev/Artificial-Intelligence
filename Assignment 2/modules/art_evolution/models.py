@@ -3,8 +3,10 @@ import modules.art_evolution.utils as utils
 from operator import itemgetter
 from skimage.metrics import structural_similarity
 import numpy as np
+from PIL import Image
 import bisect
 from multiprocessing import Manager, Pool, Value
+from config import NUMBER_CORES
 
 
 class Individual:
@@ -117,7 +119,7 @@ class Population:
 
         with Manager() as manager:
             population = manager.list()
-            pool = Pool(6)
+            pool = Pool(NUMBER_CORES)
             progenitor = Individual(self.image_size)
             total_fitness = 0
             # randomly initialize set of individuals
@@ -149,9 +151,10 @@ class Population:
 
     def _calculate_fitness(self, individual):
         # check the similarity index of the original and candidate image
-        individual = np.asarray(individual.convert('RGB'), dtype=np.int32)
-        score_candidate = structural_similarity(self.original_image, individual,
-                                                data_range=self.original_image.max() - individual.min(),
+        individual_pil = Image.fromarray(individual, 'RGB')
+        individual_rgb = np.asarray(individual_pil)
+        score_candidate = structural_similarity(self.original_image, individual_rgb,
+                                                data_range=self.original_image.max() - individual_rgb.min(),
                                                 multichannel=True)
         return score_candidate
 
@@ -179,7 +182,7 @@ class Population:
     def crossover(self):
         with Manager() as manager:
             next_population = manager.list()
-            pool = Pool(6)
+            pool = Pool(NUMBER_CORES)
             total_fitness = 0
 
             for parents in self.parents:
@@ -220,7 +223,7 @@ class Population:
     def mutation(self):
         with Manager() as manager:
             population = manager.list()
-            pool = Pool(6)
+            pool = Pool(NUMBER_CORES)
             total_fitness = 0
 
             for individual_entry in self.population.copy():

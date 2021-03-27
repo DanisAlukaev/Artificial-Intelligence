@@ -1,12 +1,13 @@
 import modules.art_evolution.utils as utils
 import time
 from modules.art_evolution.models import Population, Individual
+from PIL import Image
 
 
 def report(fittest, generation, runtime):
     try:
-        utils.restore_image(fittest['individual']).save(
-            'documents/output/Generation #' + str(generation) + '.png')
+        result = Image.fromarray(utils.restore_image(fittest['individual']))
+        result.save('documents/output/Generation #' + str(generation) + '.png')
         status = True
     except:
         status = False
@@ -29,4 +30,4 @@ def run_evolution(original_image, population_size, number_generations):
 
         fittest = population.get_fittest()
         report(fittest, generation + 1, time.time() - start_time)
-    return fittest
+    return utils.restore_image(fittest['individual'])

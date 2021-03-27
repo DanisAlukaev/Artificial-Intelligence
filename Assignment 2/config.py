@@ -7,3 +7,6 @@ ORIGINAL_IMAGE = np.asarray(Image.open("documents/input/Mona Lisa.jpg"), dtype=n
 POPULATION_SIZE = 500
 # number of generations
 NUMBER_GENERATIONS = 9999
+
+# number of cores
+NUMBER_CORES = 8
