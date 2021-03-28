@@ -7,8 +7,10 @@ ORIGINAL_IMAGE = np.asarray(Image.open("documents/input/Mona Lisa.jpg"), dtype=n
 POPULATION_SIZE = 500
 # elite group size
 ELITE_SIZE = 10
+# number of mutations
+MUTATIONS_NUMBER = 1
 # number of generations
-NUMBER_GENERATIONS = 9999
+GENERATIONS_NUMBER = 9999
 
 # number of cores
-NUMBER_CORES = 8
+CORES_NUMBER = 8
