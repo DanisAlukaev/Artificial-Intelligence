@@ -5,6 +5,8 @@ import numpy as np
 ORIGINAL_IMAGE = np.asarray(Image.open("documents/input/Mona Lisa.jpg"), dtype=np.int32)
 # number of individuals in population
 POPULATION_SIZE = 500
+# elite group size
+ELITE_SIZE = 10
 # number of generations
 NUMBER_GENERATIONS = 9999
 

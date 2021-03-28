@@ -5,6 +5,7 @@ from skimage.metrics import structural_similarity
 import numpy as np
 from PIL import Image
 import bisect
+import time
 from multiprocessing import Manager, Pool, Value
 from config import NUMBER_CORES
 
@@ -59,7 +60,7 @@ class Individual:
 
     def _get_random_font_size(self):
         # randomly generate font size
-        font_size = randint(5, 83)
+        font_size = randint(50, 85)
         return font_size
 
     def _get_random_symbol(self):
@@ -184,11 +185,11 @@ class Population:
             next_population = manager.list()
             pool = Pool(NUMBER_CORES)
             total_fitness = 0
-
-            for parents in self.parents:
+            for i, parents in enumerate(self.parents):
                 pool.apply_async(self._multiprocessing_crossover, (parents, next_population,))
             pool.close()
             pool.join()
+            pool.terminate()
 
             next_population = list(next_population)
             for i in range(self.population_size):
@@ -217,8 +218,9 @@ class Population:
         offspring = utils.restore_image(offspring_entry['individual'])
         offspring_fitness = self._calculate_fitness(offspring)
         offspring_entry['fitness'] = offspring_fitness
-
         next_population.append(offspring_entry)
+
+        print(len(next_population))
 
     def mutation(self):
         with Manager() as manager:
