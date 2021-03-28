@@ -9,4 +9,4 @@ In order to run the genetic algorithm use
 ☐ Implement new fitness function. \
 ☐ Implement new crossover function. \
 ☐ Modify mutation function. \
-☐ Fix the problem with multiprocessing in crossover and mutation stages. \
+☐ Fix the problem with multiprocessing in crossover and mutation stages. 

@@ -11,7 +11,9 @@ def report(fittest, generation, runtime):
         status = True
     except:
         status = False
-    print(f"Generation #{generation}: Similarity index is {fittest['fitness']}, runtime is "
+    width, height = fittest['individual'].image_size
+    ssim = 100 - 100 * fittest['fitness'] / (765 * width * height)
+    print(f"Generation #{generation}: Similarity index is {ssim}, runtime is "
           f"{runtime} seconds, Saved={status}")
 
 

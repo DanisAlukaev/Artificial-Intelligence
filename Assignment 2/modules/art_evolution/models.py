@@ -154,10 +154,8 @@ class Population:
         # check the similarity index of the original and candidate image
         individual_pil = Image.fromarray(individual, 'RGB')
         individual_rgb = np.asarray(individual_pil)
-        score_candidate = structural_similarity(self.original_image, individual_rgb,
-                                                data_range=self.original_image.max() - individual_rgb.min(),
-                                                multichannel=True)
-        return score_candidate
+        difference = np.sum(np.abs(self.original_image - individual_rgb))
+        return difference
 
     def selection(self):
         parents = []
@@ -251,5 +249,5 @@ class Population:
         population.append(individual_entry)
 
     def get_fittest(self):
-        sorted_population = sorted(self.population, key=itemgetter('fitness'), reverse=True)
+        sorted_population = sorted(self.population, key=itemgetter('fitness'))
         return sorted_population[0]
