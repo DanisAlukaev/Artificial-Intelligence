@@ -7,6 +7,5 @@ In order to run the genetic algorithm use
 
 ### To-Do list:
 ☐ Get rid of del mutation or change the priority of it.
-☐ Check behavior of the fitness function on the transparent pixels of created image.
 ☐ Find out why the time for generation increases.
 

@@ -4,10 +4,12 @@ from modules.art_evolution.models import Population, Individual
 from PIL import Image
 
 
+
 def report(fittest, generation, runtime):
     try:
         result = Image.fromarray(utils.restore_image(fittest['individual']))
-        result.save('documents/output/Generation #' + str(generation) + '.png')
+        result = result.convert('RGB')
+        result.save('documents/output/Generation #' + str(generation) + '.jpeg')
         status = True
     except:
         status = False

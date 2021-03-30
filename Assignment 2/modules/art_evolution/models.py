@@ -9,7 +9,7 @@ from PIL import Image
 import bisect
 import time
 from multiprocessing import Manager, Pool, Value
-from config import CORES_NUMBER, ELITE_SIZE, MUTATIONS_NUMBER
+from config import CORES_NUMBER, ELITE_SIZE, MUTATIONS_NUMBER, GENES_NUMBER, MIN_FONT, MAX_FONT
 
 
 def _multiprocessing_init(original_image, individual):
@@ -24,7 +24,8 @@ def _multiprocessing_init(original_image, individual):
 
 def _calculate_fitness(original_image, individual):
     # check the similarity index of the original and candidate image
-    individual_pil = Image.fromarray(individual, 'RGB')
+    individual_pil = Image.fromarray(individual)
+    individual_pil = individual_pil.convert('RGB')
     individual_rgb = np.asarray(individual_pil)
     difference = np.sum(np.abs(original_image - individual_rgb))
     return difference
@@ -83,7 +84,7 @@ class Individual:
         chromosome = []
 
         # define number of genes (symbols) in chromosome based on the size of input image
-        number_genes = max(*self.image_size) * 3
+        number_genes = GENES_NUMBER
 
         # generate symbols
         for i in range(number_genes):
@@ -108,15 +109,14 @@ class Individual:
 
     def _get_random_font_size(self):
         # randomly generate font size
-        font_size = randint(50, 85)
+        font_size = randint(MIN_FONT, MAX_FONT)
         return font_size
 
     def _get_random_symbol(self):
         # randomly generate symbol
         # symbol is either ASCII special character or Basic Latin or Latin-1 supplement
-        range_decimal = choice([(33, 126), (161, 383)])
-        decimal = randint(*range_decimal)
-        symbol = chr(decimal)
+        alphabet = "1234567890abcdefghijklmnopqrstuvõäöüxywz"
+        symbol = alphabet[randint(0, len(alphabet) - 1)]
         return symbol
 
     def _get_random_color(self):
@@ -129,7 +129,7 @@ class Individual:
 
     def mutate(self):
         for i in range(MUTATIONS_NUMBER):
-            mutations = [self._mutate_color, self._mutate_priority, self._mutate_parameters, self._mutate_lose_gen]
+            mutations = [self._mutate_color, self._mutate_priority]
             choice(mutations)()
 
     def _mutate_lose_gen(self):
@@ -185,9 +185,10 @@ class Population:
 
         with concurrent.futures.ProcessPoolExecutor(max_workers=CORES_NUMBER) as executor:
             results = []
+            individual = Individual(self.image_size)
             for i in range(population_size):
-                individual = Individual(self.image_size)
-                results.append(executor.submit(_multiprocessing_init, self.original_image, individual))
+                sibling = individual.generate_sibling()
+                results.append(executor.submit(_multiprocessing_init, self.original_image, sibling))
 
             for futures in concurrent.futures.as_completed(results):
                 population.append(futures.result())
@@ -196,9 +197,11 @@ class Population:
         for i in range(ELITE_SIZE):
             total_fitness += population[i]['fitness']
 
+        opposite_probability = population[0]['fitness'] + population[ELITE_SIZE - 1]['fitness']
+
         for i in range(self.population_size):
             if i < ELITE_SIZE:
-                probability = population[i]['fitness'] / total_fitness
+                probability = (opposite_probability - population[i]['fitness']) / total_fitness
             else:
                 probability = 0
             population[i]['probability'] = probability
@@ -213,14 +216,15 @@ class Population:
             parent2 = self._select_parent()
             while parent1 == parent2:
                 parent2 = self._select_parent()
-            parents.append((parent1, parent2))
+            parents.append((self.population[parent1], self.population[parent2]))
         self.parents = parents
 
     def _select_parent(self):
-        boundaries = self._cumulative_distribution_function()
-        outcome = random()
-        parent_idx = bisect.bisect(boundaries, outcome)
-        return self.population[parent_idx]
+        # boundaries = self._cumulative_distribution_function()
+        # outcome = random()
+        # parent_idx = bisect.bisect(boundaries, outcome)
+        parent_idx = randint(0, ELITE_SIZE - 1)
+        return parent_idx
 
     def _cumulative_distribution_function(self):
         boundaries = []
@@ -248,9 +252,11 @@ class Population:
         for i in range(ELITE_SIZE):
             total_fitness += next_population[i]['fitness']
 
+        opposite_probability = next_population[0]['fitness'] + next_population[ELITE_SIZE - 1]['fitness']
+
         for i in range(self.population_size):
             if i < ELITE_SIZE:
-                probability = next_population[i]['fitness'] / total_fitness
+                probability = (opposite_probability - next_population[i]['fitness']) / total_fitness
             else:
                 probability = 0
             next_population[i]['probability'] = probability
@@ -273,9 +279,11 @@ class Population:
         for i in range(ELITE_SIZE):
             total_fitness += mutated_population[i]['fitness']
 
+        opposite_probability = mutated_population[0]['fitness'] + mutated_population[ELITE_SIZE - 1]['fitness']
+
         for i in range(self.population_size):
             if i < ELITE_SIZE:
-                probability = mutated_population[i]['fitness'] / total_fitness
+                probability = (opposite_probability - mutated_population[i]['fitness']) / total_fitness
             else:
                 probability = 0
             mutated_population[i]['probability'] = probability

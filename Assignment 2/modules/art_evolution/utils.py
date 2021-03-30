@@ -16,5 +16,5 @@ def restore_image(individual: Individual):
         context.move_to(*symbol['position'])
         context.show_text(symbol['symbol'])
     buffer = image_surface.get_data()
-    image = np.ndarray(shape=(512, 512, 4), dtype=np.uint8, buffer=buffer)
+    image = np.ndarray(shape=(*individual.image_size, 4), dtype=np.uint8, buffer=buffer)
     return image
