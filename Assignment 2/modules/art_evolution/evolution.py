@@ -25,19 +25,10 @@ def run_evolution(original_image, population_size, number_generations):
 
     for generation in range(number_generations):
         start_time = time.time()
+
         population.selection()
-        end_time = time.time()
-        print("Selection: ", end_time - start_time)
-
-        start_time = time.time()
         population.crossover()
-        end_time = time.time()
-        print("Crossover: ", end_time - start_time)
-
-        start_time = time.time()
         population.mutation()
-        end_time = time.time()
-        print("Mutation: ", end_time - start_time)
 
         fittest = population.get_fittest()
         report(fittest, generation + 1, time.time() - start_time)

@@ -6,4 +6,7 @@ In order to run the genetic algorithm use
 ```python main.py```
 
 ### To-Do list:
-☐ Fix the problem with multiprocessing in crossover and mutation stages. 
+☐ Get rid of del mutation or change the priority of it.
+☐ Check behavior of the fitness function on the transparent pixels of created image.
+☐ Find out why the time for generation increases.
+

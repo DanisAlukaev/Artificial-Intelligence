@@ -3,11 +3,55 @@ import modules.art_evolution.utils as utils
 from operator import itemgetter
 from skimage.metrics import structural_similarity
 import numpy as np
+import concurrent.futures
+import multiprocessing as mp
 from PIL import Image
 import bisect
 import time
 from multiprocessing import Manager, Pool, Value
 from config import CORES_NUMBER, ELITE_SIZE, MUTATIONS_NUMBER
+
+
+def _multiprocessing_init(original_image, individual):
+    population_entry = {'individual': individual}
+
+    individual = utils.restore_image(population_entry['individual'])
+    individual_fitness = _calculate_fitness(original_image, individual)
+    population_entry['fitness'] = individual_fitness
+
+    return population_entry
+
+
+def _calculate_fitness(original_image, individual):
+    # check the similarity index of the original and candidate image
+    individual_pil = Image.fromarray(individual, 'RGB')
+    individual_rgb = np.asarray(individual_pil)
+    difference = np.sum(np.abs(original_image - individual_rgb))
+    return difference
+
+
+def _multiprocessing_crossover(original_image, parents):
+    parent1, parent2 = parents
+    number_genes = len(parent1['individual'].chromosome)
+
+    offspring_chromosome = []
+    for i in range(number_genes):
+        gene = choice([parent1['individual'].chromosome[i], parent2['individual'].chromosome[i]])
+        offspring_chromosome.append(gene)
+
+    offspring_entry = {'individual': Individual(parent1['individual'].image_size, offspring_chromosome)}
+    offspring = utils.restore_image(offspring_entry['individual'])
+    offspring_fitness = _calculate_fitness(original_image, offspring)
+    offspring_entry['fitness'] = offspring_fitness
+    return offspring_entry
+
+
+def _multiprocessing_mutation(original_image, individual):
+    individual['individual'].mutate()
+    individual_image = utils.restore_image(individual['individual'])
+    individual_fitness = _calculate_fitness(original_image, individual_image)
+    individual['fitness'] = individual_fitness
+    return individual
 
 
 class Individual:
@@ -136,47 +180,31 @@ class Population:
         self.population_size = population_size
         self.image_size = original_image.shape[:2]
 
-        with Manager() as manager:
-            population = manager.list()
-            pool = Pool(CORES_NUMBER)
-            total_fitness = 0
-            # randomly initialize set of individuals
+        population = []
+        total_fitness = 0
+
+        with concurrent.futures.ProcessPoolExecutor(max_workers=CORES_NUMBER) as executor:
+            results = []
             for i in range(population_size):
                 individual = Individual(self.image_size)
-                pool.apply_async(self._multiprocessing_init, (individual, population,))
-            pool.close()
-            pool.join()
+                results.append(executor.submit(_multiprocessing_init, self.original_image, individual))
 
-            population = list(population)
-            population = sorted(population, key=itemgetter('fitness'))
-            for i in range(ELITE_SIZE):
-                total_fitness += population[i]['fitness']
+            for futures in concurrent.futures.as_completed(results):
+                population.append(futures.result())
 
-            for i in range(self.population_size):
-                if i < ELITE_SIZE:
-                    probability = population[i]['fitness'] / total_fitness
-                else:
-                    probability = 0
-                population[i]['probability'] = probability
+        population = sorted(population, key=itemgetter('fitness'))
+        for i in range(ELITE_SIZE):
+            total_fitness += population[i]['fitness']
 
-            self.population = population
-            self.parents = []
+        for i in range(self.population_size):
+            if i < ELITE_SIZE:
+                probability = population[i]['fitness'] / total_fitness
+            else:
+                probability = 0
+            population[i]['probability'] = probability
 
-    def _multiprocessing_init(self, individual, population):
-        population_entry = {'individual': individual}
-
-        individual = utils.restore_image(population_entry['individual'])
-        individual_fitness = self._calculate_fitness(individual)
-        population_entry['fitness'] = individual_fitness
-
-        population.append(population_entry)
-
-    def _calculate_fitness(self, individual):
-        # check the similarity index of the original and candidate image
-        individual_pil = Image.fromarray(individual, 'RGB')
-        individual_rgb = np.asarray(individual_pil)
-        difference = np.sum(np.abs(self.original_image - individual_rgb))
-        return difference
+        self.population = population
+        self.parents = []
 
     def selection(self):
         parents = []
@@ -204,77 +232,54 @@ class Population:
         return boundaries
 
     def crossover(self):
-        with Manager() as manager:
-            next_population = manager.list()
-            pool = Pool(CORES_NUMBER)
-            total_fitness = 0
+        next_population = []
+        for i in range(ELITE_SIZE):
+            next_population.append(self.population[i])
+        with concurrent.futures.ProcessPoolExecutor(max_workers=CORES_NUMBER) as executor:
+            results = [executor.submit(_multiprocessing_crossover, self.original_image, parents) for parents in
+                       self.parents]
 
-            for i in range(ELITE_SIZE):
-                next_population.append(self.population[i])
+            for futures in concurrent.futures.as_completed(results):
+                next_population.append(futures.result())
 
-            for parents in self.parents:
-                pool.apply_async(self._multiprocessing_crossover, (parents, next_population,))
-            pool.close()
-            pool.join()
+        total_fitness = 0
+        next_population = sorted(next_population, key=itemgetter('fitness'))
 
-            next_population = list(next_population)
-            next_population = sorted(next_population, key=itemgetter('fitness'))
-            for i in range(ELITE_SIZE):
-                total_fitness += next_population[i]['fitness']
+        for i in range(ELITE_SIZE):
+            total_fitness += next_population[i]['fitness']
 
-            for i in range(self.population_size):
-                if i < ELITE_SIZE:
-                    probability = next_population[i]['fitness'] / total_fitness
-                else:
-                    probability = 0
-                next_population[i]['probability'] = probability
-            self.population = next_population
-
-    def _multiprocessing_crossover(self, parents, next_population):
-        parent1, parent2 = parents
-        number_genes = len(parent1['individual'].chromosome)
-
-        offspring_chromosome = []
-        for i in range(number_genes):
-            outcome = randint(1, 2)
-            if outcome == 1:
-                offspring_chromosome.append(parent1['individual'].chromosome[i])
+        for i in range(self.population_size):
+            if i < ELITE_SIZE:
+                probability = next_population[i]['fitness'] / total_fitness
             else:
-                offspring_chromosome.append(parent2['individual'].chromosome[i])
-
-        offspring_entry = {'individual': Individual(parent1['individual'].image_size, offspring_chromosome)}
-        offspring = utils.restore_image(offspring_entry['individual'])
-        offspring_fitness = self._calculate_fitness(offspring)
-        offspring_entry['fitness'] = offspring_fitness
-        next_population.append(offspring_entry)
+                probability = 0
+            next_population[i]['probability'] = probability
+        self.population = next_population
 
     def mutation(self):
-        with Manager() as manager:
-            pool = Pool(CORES_NUMBER)
-            total_fitness = 0
+        mutated_population = []
+        for i in range(ELITE_SIZE):
+            mutated_population.append(self.population[i])
+        population_before_mutation = self.population.copy()[10:]
+        with concurrent.futures.ProcessPoolExecutor(max_workers=CORES_NUMBER) as executor:
+            results = [executor.submit(_multiprocessing_mutation, self.original_image, individual)
+                       for individual in population_before_mutation]
 
-            for i in range(ELITE_SIZE, len(self.population)):
-                pool.apply_async(self._multiprocessing_mutation, (i, ))
-            pool.close()
-            pool.join()
+            for futures in concurrent.futures.as_completed(results):
+                mutated_population.append(futures.result())
+        len(mutated_population)
+        total_fitness = 0
+        mutated_population = sorted(mutated_population, key=itemgetter('fitness'))
+        for i in range(ELITE_SIZE):
+            total_fitness += mutated_population[i]['fitness']
 
-            population = sorted(self.population, key=itemgetter('fitness'))
-            for i in range(ELITE_SIZE):
-                total_fitness += population[i]['fitness']
-
-            for i in range(self.population_size):
-                if i < ELITE_SIZE:
-                    probability = population[i]['fitness'] / total_fitness
-                else:
-                    probability = 0
-                population[i]['probability'] = probability
-            self.population = population
-
-    def _multiprocessing_mutation(self, index):
-        self.population[index]['individual'].mutate()
-        individual = utils.restore_image(self.population[index]['individual'])
-        individual_fitness = self._calculate_fitness(individual)
-        self.population[index]['fitness'] = individual_fitness
+        for i in range(self.population_size):
+            if i < ELITE_SIZE:
+                probability = mutated_population[i]['fitness'] / total_fitness
+            else:
+                probability = 0
+            mutated_population[i]['probability'] = probability
+        self.population = mutated_population
 
     def get_fittest(self):
         return self.population[0]
