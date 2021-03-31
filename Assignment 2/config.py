@@ -4,6 +4,7 @@ import numpy as np
 # input image
 PATH_ORIGINAL_IMAGE = "documents/input/Mona Lisa.jpg"
 ORIGINAL_IMAGE = np.asarray(Image.open(PATH_ORIGINAL_IMAGE), dtype=np.int32)
+IMAGE_SIZE = ORIGINAL_IMAGE.shape[:2]
 
 # number of individuals in population
 POPULATION_SIZE = 500

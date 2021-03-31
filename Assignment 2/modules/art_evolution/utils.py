@@ -1,11 +1,10 @@
 import cairo
 import numpy as np
-from modules.art_evolution.models import Individual
 
 
-def restore_image(individual: Individual):
+def restore_image(individual):
     """
-    Method restoring image according to passed chromosome.
+    Method that restore image according to passed chromosome.
     To draw the image was utilized cairo package that is more efficient compared to PIL.
     :param individual: member of the population.
     :return: RGBA numpy array.

@@ -4,63 +4,92 @@ import concurrent.futures
 from PIL import Image
 import numpy as np
 import bisect
-from config import CORES_NUMBER, ELITE_SIZE, MUTATIONS_NUMBER, GENES_NUMBER, MIN_FONT, MAX_FONT
+from config import (CORES_NUMBER, ELITE_SIZE, MUTATIONS_NUMBER, GENES_NUMBER, MIN_FONT, MAX_FONT, IMAGE_SIZE,
+                    ORIGINAL_IMAGE)
 import modules.art_evolution.utils as utils
 
 
-def _multiprocessing_init(original_image, individual):
-    population_entry = {'individual': individual}
-
-    individual = utils.restore_image(population_entry['individual'])
-    individual_fitness = _calculate_fitness(original_image, individual)
-    population_entry['fitness'] = individual_fitness
-
-    return population_entry
-
-
-def _calculate_fitness(original_image, individual):
-    # check the similarity index of the original and candidate image
+def _calculate_fitness(individual):
+    """
+    Method used to compute the fitness of an individual.
+    As fitness, the sum of the absolute values of the differences between the color parameters of the individual and
+    the original image was taken. The lower the value the better.
+    :param individual: member of population.
+    :return: fitness of individual.
+    """
+    # convert image from RGBA to RGB
     individual_pil = Image.fromarray(individual)
     individual_pil = individual_pil.convert('RGB')
     individual_rgb = np.asarray(individual_pil)
-    difference = np.sum(np.abs(original_image - individual_rgb))
+    # compute the difference between the images
+    difference = np.sum(np.abs(ORIGINAL_IMAGE - individual_rgb))
     return difference
 
 
-def _multiprocessing_crossover(original_image, parents):
-    parent1, parent2 = parents
-    number_genes = len(parent1['individual'].chromosome)
+def _multiprocessing_init(individual):
+    """
+    Method used for multiprocessing computations at the initial stage.
+    Restore image from the chromosome of individual and calculates its fitness.
+    :param individual: member of population.
+    :return: dictionary comprising of individual and its fitness.
+    """
+    individual_image = utils.restore_image(individual)
+    individual_fitness = _calculate_fitness(individual_image)
+    population_entry = {'individual': individual, 'fitness': individual_fitness}
+    return population_entry
 
+
+def _multiprocessing_crossover(parents):
+    # unpack parents of the spring
+    parent1, parent2 = parents
+
+    # observation showed that passing random genes to an offspring yields better in terms of fitness function result
+    # rather than using a crossover point
     offspring_chromosome = []
-    for i in range(number_genes):
+    for i in range(GENES_NUMBER):
+        # randomly choose gene either from first or second parent
         gene = choice([parent1['individual'].chromosome[i], parent2['individual'].chromosome[i]])
         offspring_chromosome.append(gene)
 
-    offspring_entry = {'individual': Individual(parent1['individual'].image_size, offspring_chromosome)}
-    offspring = utils.restore_image(offspring_entry['individual'])
-    offspring_fitness = _calculate_fitness(original_image, offspring)
-    offspring_entry['fitness'] = offspring_fitness
+    offspring = Individual(offspring_chromosome)
+    offspring_image = utils.restore_image(offspring)
+    offspring_fitness = _calculate_fitness(offspring_image)
+    offspring_entry = {'individual': offspring, 'fitness': offspring_fitness}
     return offspring_entry
 
 
-def _multiprocessing_mutation(original_image, individual):
+def _multiprocessing_mutation(individual):
+    """
+    Method used for multiprocessing computations at the mutation stage.
+    Mutate the chromosome of individual. Restore image from chromosome and calculates fitness of individual.
+    :param individual: member of population.
+    :return: dictionary comprising of individual and its fitness.
+    """
     individual['individual'].mutate()
     individual_image = utils.restore_image(individual['individual'])
-    individual_fitness = _calculate_fitness(original_image, individual_image)
+    individual_fitness = _calculate_fitness(individual_image)
     individual['fitness'] = individual_fitness
     return individual
 
 
 class Individual:
 
-    def __init__(self, image_size, chromosome=None):
-        self.image_size = image_size
+    def __init__(self, chromosome=None):
+        """
+        Constructor of the class Individual.
+        :param chromosome: list of genes.
+        """
         if chromosome is None:
-            self.chromosome = self._initialize_random_genes()
+            self._initialize_random_genes()
         else:
             self.chromosome = chromosome.copy()
 
-    def _generate_random_gen(self):
+    def _generate_random_gene(self):
+        """
+        Method that stochastically generate gene of the individual.
+        Gene is a dictionary with keys 'symbol', 'position', 'font_size' and 'color' with each of those associated
+        value describing it.
+        """
         # generate position
         symbol_position = self._get_random_position()
         # generate symbol
@@ -70,217 +99,307 @@ class Individual:
         # generate the font_size
         symbol_size = self._get_random_font_size()
 
-        # compose the entry
+        # compose the gene
         gene = {'symbol': symbol, 'position': symbol_position, 'font_size': symbol_size, 'color': symbol_color}
         return gene
 
     def _initialize_random_genes(self):
-        # initialize list consisting of parameters for symbol representation
-        # each entry is dictionary containing symbol, position, font_size, color keys
+        """
+        Method that stochastically generate chromosome of the current individual.
+        Chromosome consists of genes, each of whose is a dictionary with keys 'symbol', 'position', 'font_size' and
+        'color'.
+        """
+        # initialize a list of genes
         chromosome = []
-
-        # define number of genes (symbols) in chromosome based on the size of input image
-        number_genes = GENES_NUMBER
-
-        # generate symbols
-        for i in range(number_genes):
-            gene = self._generate_random_gen()
-            # append gen to the chromosome
+        # append to the chromosome randomly created genes
+        for i in range(GENES_NUMBER):
+            gene = self._generate_random_gene()
             chromosome.append(gene)
-        return chromosome
+        self.chromosome = chromosome
 
     def generate_sibling(self):
+        """
+        Method that generate new individual inheriting the glyph, font size, position from the current member of
+        population, but has different ordering and colors of glyphs.
+        :return:
+        """
+        # copy the current chromosome
         sibling_chromosome = self.chromosome.copy()
+        # change the ordering of genes
         shuffle(sibling_chromosome)
-        for gen in sibling_chromosome:
-            gen['color'] = self._get_random_color()
-        return Individual(self.image_size, sibling_chromosome)
+        # assign new colors to glyphs
+        for gene in sibling_chromosome:
+            gene['color'] = self._get_random_color()
+        return Individual(sibling_chromosome)
 
-    def _get_random_position(self):
+    @staticmethod
+    def _get_random_position():
+        """
+        Method that choose the random position on the image surface.
+        :return: x,y-coordinates.
+        """
         # randomly generate position on the image
-        m, n = self.image_size
+        m, n = IMAGE_SIZE
         x = randint(0, m)
         y = randint(0, n)
         return x, y
 
-    def _get_random_font_size(self):
+    @staticmethod
+    def _get_random_font_size():
+        """
+        Method that choose the random size of font defined with the declared range.
+        :return: random font size.
+        """
         # randomly generate font size
         font_size = randint(MIN_FONT, MAX_FONT)
         return font_size
 
-    def _get_random_symbol(self):
-        # randomly generate symbol
-        # symbol is either ASCII special character or Basic Latin or Latin-1 supplement
-        alphabet = "1234567890abcdefghijklmnopqrstuvõäöüxywz"
+    @staticmethod
+    def _get_random_symbol():
+        """
+        Method that choose random symbol out of alphabet consisting of Basic Latin,
+        Latin-1 supplement and digits glyphs.
+        :return: random symbol.
+        """
+        # define alphabet
+        alphabet = "qwertyuiopasdfghjklzxcvbnmàáâãäåèéêëñòóôõöùúûüýÿ1234567890"
+        # randomly choose the symbol
         symbol = alphabet[randint(0, len(alphabet) - 1)]
         return symbol
 
-    def _get_random_color(self):
-        # randomly generate color in RGBA
+    @staticmethod
+    def _get_random_color():
+        """
+        Method that generate 8-bit RGBA color.
+        :return: random RGBA color.
+        """
         red = randint(0, 255)
         green = randint(0, 255)
         blue = randint(0, 255)
+        # using constant alpha-channel parameter improve the quality of the output image
         alpha = 255
         return red, green, blue, alpha
 
     def mutate(self):
+        # TODO: change the probability to occur
+        """
+        Method that perform declared number of the mutations.
+        There are 4 basic mutations with same probability to occur:
+        1. Mutate color parameter of the gene.
+        2. Mutate the priority of the gene (gene with greater priority displayed on the top of others).
+        3. Losing of some gene that is followed by appending of random gene.
+        4. Mutate entire gene by changing all the parameters.
+        """
         for i in range(MUTATIONS_NUMBER):
-            mutations = [self._mutate_color, self._mutate_priority]
+            # define set of mutations
+            mutations = [self._mutate_color, self._mutate_priority, self._mutate_lose_gen, self._mutate_parameters]
+            # mutate the gene
             choice(mutations)()
 
-    def _mutate_lose_gen(self):
-        number_genes = len(self.chromosome)
-        # choose the random symbol
-        random_idx = randint(0, number_genes - 1)
-        del self.chromosome[random_idx]
-        self.chromosome.append(self._generate_random_gen())
-
-    def _mutate_parameters(self):
-        number_genes = len(self.chromosome)
-        # choose the random symbol
-        random_idx = randint(0, number_genes - 1)
-        self.chromosome[random_idx] = self._generate_random_gen()
-
     def _mutate_color(self):
-        number_genes = len(self.chromosome)
+        """
+        Method that change the color parameter of the random gene.
+        """
         # choose the random symbol
-        random_idx = randint(0, number_genes - 1)
-        # auxiliary list
-        mutated_chromosome = self.chromosome.copy()
-
-        # mutate the color of symbol
-        mutated_chromosome[random_idx]['color'] = self._get_random_color()
-        self.chromosome = mutated_chromosome
+        random_idx = randint(0, GENES_NUMBER - 1)
+        # assign random color for symbol
+        self.chromosome[random_idx]['color'] = self._get_random_color()
 
     def _mutate_priority(self):
-        number_genes = len(self.chromosome)
-        # choose the random symbol
-        gene1_idx = randint(0, number_genes - 1)
-        # auxiliary list
-        mutated_chromosome = self.chromosome.copy()
+        """
+        Method changing the priority of the random gene.
+        Swaps two randomly genes.
+        :return:
+        """
+        # choose two random indexes
+        gene1_idx = randint(2, GENES_NUMBER - 1)
+        gene2_idx = randint(0, gene1_idx - 1)
 
         # swap two genes
-        # symbols with a greater priority (smaller index) will be displayed on top of the others
-        gene2_idx = randint(0, gene1_idx)
-        tempo = mutated_chromosome[gene1_idx]
-        mutated_chromosome[gene1_idx] = mutated_chromosome[gene2_idx]
-        mutated_chromosome[gene2_idx] = tempo
+        tempo = self.chromosome[gene1_idx]
+        self.chromosome[gene1_idx] = self.chromosome[gene2_idx]
+        self.chromosome[gene2_idx] = tempo
 
-        self.chromosome = mutated_chromosome
+    def _mutate_lose_gen(self):
+        """
+        Method that delete random gene and create new one.
+        """
+        # choose the random symbol
+        random_idx = randint(0, GENES_NUMBER - 1)
+        del self.chromosome[random_idx]
+        self.chromosome.append(self._generate_random_gene())
+
+    def _mutate_parameters(self):
+        """
+        Method that set new parameters for the random gene.
+        """
+        # choose the random symbol
+        random_idx = randint(0, GENES_NUMBER - 1)
+        self.chromosome[random_idx] = self._generate_random_gene()
 
 
 class Population:
-
-    def __init__(self, original_image, population_size):
-        self.original_image = original_image
+    def __init__(self, population_size):
+        """
+        Constructor for the class Population.
+        Stochastically generates initial population.
+        :param population_size: number of individuals in population.
+        """
+        # set population size
         self.population_size = population_size
-        self.image_size = original_image.shape[:2]
-
+        # initialize list of individuals
         population = []
+        # initialize total fitness
         total_fitness = 0
 
+        # use multiple processes to create individuals and compute their fitness
         with concurrent.futures.ProcessPoolExecutor(max_workers=CORES_NUMBER) as executor:
             results = []
-            individual = Individual(self.image_size)
-            for i in range(population_size):
+            # create progenitor
+            individual = Individual(IMAGE_SIZE)
+            for i in range(self.population_size):
+                # generate sibling
                 sibling = individual.generate_sibling()
-                results.append(executor.submit(_multiprocessing_init, self.original_image, sibling))
+                # process sibling
+                results.append(executor.submit(_multiprocessing_init, sibling))
 
             for futures in concurrent.futures.as_completed(results):
+                # store the result
                 population.append(futures.result())
-
+        # sort the population by value of fitness
         population = sorted(population, key=itemgetter('fitness'))
+
+        # aggregate the fitness of population elite
         for i in range(ELITE_SIZE):
             total_fitness += population[i]['fitness']
-
-        opposite_probability = population[0]['fitness'] + population[ELITE_SIZE - 1]['fitness']
+        # auxiliary variable to scale the fitness value
+        probability_scale = population[0]['fitness'] + population[ELITE_SIZE - 1]['fitness']
 
         for i in range(self.population_size):
-            if i < ELITE_SIZE:
-                probability = (opposite_probability - population[i]['fitness']) / total_fitness
-            else:
-                probability = 0
+            # assign probability of being selected based on the fitness value of individual
+            probability = (probability_scale - population[i]['fitness']) / total_fitness if i < ELITE_SIZE else 0
             population[i]['probability'] = probability
 
+        # save the population
         self.population = population
+        # initialize parents list
         self.parents = []
 
     def selection(self):
+        """
+        Method that select pairs of individuals to pass their genes to next generation.
+        Only the fittest individuals that are in the elite can be chosen.
+        """
+        # initialize list of parents
         parents = []
+        # each pair will produce one individual
         for i in range(self.population_size - ELITE_SIZE):
+            # choose two non-equal parents
             parent1 = self._select_parent()
             parent2 = self._select_parent()
             while parent1 == parent2:
                 parent2 = self._select_parent()
+            # save parents in list
             parents.append((self.population[parent1], self.population[parent2]))
         self.parents = parents
 
     def _select_parent(self):
-        # boundaries = self._cumulative_distribution_function()
-        # outcome = random()
-        # parent_idx = bisect.bisect(boundaries, outcome)
-        parent_idx = randint(0, ELITE_SIZE - 1)
+        """
+        Method that stochastically choose the individual based on the fitness value.
+        Each of individuals has probability to be chosen.
+        :return: index of chosen individual.
+        """
+        # define the boundaries of CDF
+        boundaries = self._cumulative_distribution_function()
+        # select individual
+        parent_idx = bisect.bisect(boundaries, random())
         return parent_idx
 
     def _cumulative_distribution_function(self):
+        """
+        Method that compute cumulative distribution function for elite individuals to be selected.
+        :return: list of boundaries.
+        """
+        # initialize boundary probabilities
         boundaries = []
+        # initialize cumulative sum of probabilities
         cumulative_sum = 0
+        # get probabilities for elite individuals
         probabilities = [self.population[i]['probability'] for i in range(ELITE_SIZE)]
+        # set boundaries
         for probability in probabilities:
             cumulative_sum += probability
             boundaries.append(cumulative_sum)
         return boundaries
 
+    def _assign_probabilities(self, population):
+        """
+        Method that assign probabilities to be selected to elite individuals.
+        :param population: population to be processed.
+        """
+        # initialize total fitness
+        total_fitness = 0
+        # sort the population by value of fitness
+        population = sorted(population, key=itemgetter('fitness'))
+
+        # aggregate the fitness of population elite
+        for i in range(ELITE_SIZE):
+            total_fitness += population[i]['fitness']
+        # auxiliary variable to scale the fitness value
+        probability_scale = population[0]['fitness'] + population[ELITE_SIZE - 1]['fitness']
+
+        for i in range(self.population_size):
+            # assign probability of being selected based on the fitness value of individual
+            probability = (probability_scale - population[i]['fitness']) / total_fitness if i < ELITE_SIZE else 0
+            population[i]['probability'] = probability
+        # save the population
+        self.population = population
+
     def crossover(self):
+        """
+        Method that perform crossover in population.
+        Uses parents chosen by selection operator.
+        """
+        # initialize list of individuals moving to next population
         next_population = []
+        # move the elite to next population
         for i in range(ELITE_SIZE):
             next_population.append(self.population[i])
+
+        # use multiple processes to combine genetic information and compute fitness of the offspring
         with concurrent.futures.ProcessPoolExecutor(max_workers=CORES_NUMBER) as executor:
-            results = [executor.submit(_multiprocessing_crossover, self.original_image, parents) for parents in
+            # process parents
+            results = [executor.submit(_multiprocessing_crossover, parents) for parents in
                        self.parents]
 
             for futures in concurrent.futures.as_completed(results):
+                # store the result
                 next_population.append(futures.result())
 
-        total_fitness = 0
-        next_population = sorted(next_population, key=itemgetter('fitness'))
-
-        for i in range(ELITE_SIZE):
-            total_fitness += next_population[i]['fitness']
-
-        opposite_probability = next_population[0]['fitness'] + next_population[ELITE_SIZE - 1]['fitness']
-
-        for i in range(self.population_size):
-            if i < ELITE_SIZE:
-                probability = (opposite_probability - next_population[i]['fitness']) / total_fitness
-            else:
-                probability = 0
-            next_population[i]['probability'] = probability
-        self.population = next_population
+        # assign probabilities to be selected
+        self._assign_probabilities(next_population)
 
     def mutation(self):
+        """
+        Method that perform mutation on each offspring.
+        """
+        # initialize list of mutated individuals
         mutated_population = []
+        # move the elite to next population
         for i in range(ELITE_SIZE):
             mutated_population.append(self.population[i])
+        # copy individuals to be mutated
         population_before_mutation = self.population.copy()[10:]
+
+        # use multiple processes to mutate individuals and compute fitness of mutated individuals
         with concurrent.futures.ProcessPoolExecutor(max_workers=CORES_NUMBER) as executor:
-            results = [executor.submit(_multiprocessing_mutation, self.original_image, individual)
+            # process individuals
+            results = [executor.submit(_multiprocessing_mutation, individual)
                        for individual in population_before_mutation]
 
             for futures in concurrent.futures.as_completed(results):
+                # store the result
                 mutated_population.append(futures.result())
-        len(mutated_population)
-        total_fitness = 0
-        mutated_population = sorted(mutated_population, key=itemgetter('fitness'))
-        for i in range(ELITE_SIZE):
-            total_fitness += mutated_population[i]['fitness']
 
-        opposite_probability = mutated_population[0]['fitness'] + mutated_population[ELITE_SIZE - 1]['fitness']
-
-        for i in range(self.population_size):
-            if i < ELITE_SIZE:
-                probability = (opposite_probability - mutated_population[i]['fitness']) / total_fitness
-            else:
-                probability = 0
-            mutated_population[i]['probability'] = probability
-        self.population = mutated_population
+        # assign probabilities to be selected
+        self._assign_probabilities(mutated_population)

@@ -2,10 +2,11 @@ from PIL import Image
 import time
 from modules.art_evolution.models import Population
 import modules.art_evolution.utils as utils
-from config import ORIGINAL_IMAGE, POPULATION_SIZE, GENERATIONS_NUMBER
+from config import IMAGE_SIZE, POPULATION_SIZE, GENERATIONS_NUMBER
 
 
 def report(population, generation, runtime):
+    # TODO: check the error while fail to save image
     """
     Method that reports current information about the state of the population and saves the fittest individual.
     :param population: current state of population.
@@ -24,7 +25,7 @@ def report(population, generation, runtime):
         status = 'Not saved'
 
     # translate fitness into a 100 percent scale
-    width, height = ORIGINAL_IMAGE.shape[:2]
+    width, height = IMAGE_SIZE
     fitness = 100 - 100 * fittest['fitness'] / (255 * 3 * width * height)
     print(f"Generation #{generation}: Fitness achieved is {fitness}, runtime is {runtime} seconds, {status}")
 
@@ -33,7 +34,7 @@ def run_evolution():
     # get the start time
     start_time = time.time()
     # initialize new population
-    population = Population(ORIGINAL_IMAGE, POPULATION_SIZE)
+    population = Population(POPULATION_SIZE)
     # report the state of population
     report(population, 0, time.time() - start_time)
 
