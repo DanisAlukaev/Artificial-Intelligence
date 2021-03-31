@@ -1,15 +1,11 @@
 from random import randint, choice, random, shuffle
-import modules.art_evolution.utils as utils
 from operator import itemgetter
-from skimage.metrics import structural_similarity
-import numpy as np
 import concurrent.futures
-import multiprocessing as mp
 from PIL import Image
+import numpy as np
 import bisect
-import time
-from multiprocessing import Manager, Pool, Value
 from config import CORES_NUMBER, ELITE_SIZE, MUTATIONS_NUMBER, GENES_NUMBER, MIN_FONT, MAX_FONT
+import modules.art_evolution.utils as utils
 
 
 def _multiprocessing_init(original_image, individual):
@@ -288,6 +284,3 @@ class Population:
                 probability = 0
             mutated_population[i]['probability'] = probability
         self.population = mutated_population
-
-    def get_fittest(self):
-        return self.population[0]
