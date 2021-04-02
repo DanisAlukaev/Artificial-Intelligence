@@ -2,6 +2,7 @@ import cairo
 import numpy as np
 from config import IMAGE_SIZE
 
+
 def restore_image(individual):
     """
     Method that restore image according to passed chromosome.

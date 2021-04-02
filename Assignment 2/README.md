@@ -5,9 +5,10 @@ Work is in progress.
 In order to run the genetic algorithm use 
 ```python main.py```
 
+### Sample results:
+The proposed algorithm was tested on the Mona Lisa image. There was reached `92.08%` accuracy in `2523` generations. \
+![Process of breeding solution](documents/resources/Mona%20Lisa.gif)
+
 ### To-Do list:
-1. Write comments for code.
-2. Improve the quality of code.
-3. Test the algorithm with several mutations.
-4. Test on image 512 x 512.
+1. Test on image 512 x 512.
 

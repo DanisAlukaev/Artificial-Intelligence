@@ -1,8 +1,9 @@
 from PIL import Image
 import time
+import os
 from modules.art_evolution.models import Population
 import modules.art_evolution.utils as utils
-from config import IMAGE_SIZE, POPULATION_SIZE, GENERATIONS_NUMBER
+from config import IMAGE_SIZE, POPULATION_SIZE, GENERATIONS_NUMBER, FILE_NAME
 
 
 def report(population, generation, runtime):
@@ -15,6 +16,8 @@ def report(population, generation, runtime):
     """
     # get the fittest individual
     fittest = population.population[0]
+
+    # create directory if needed
     try:
         # try to save a RGB image
         result = Image.fromarray(utils.restore_image(fittest['individual']))
@@ -23,7 +26,9 @@ def report(population, generation, runtime):
         nulls = ''
         for i in range(4 - len(generation_str)):
             nulls += '0'
-        result.save('documents/output/' + nulls + generation_str + '.jpeg')
+        filename = f'documents/output/{FILE_NAME}/{nulls + generation_str}.jpeg'
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        result.save(filename)
         status = 'Saved'
     except:
         status = 'Not saved'
