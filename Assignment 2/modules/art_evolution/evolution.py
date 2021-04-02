@@ -19,7 +19,11 @@ def report(population, generation, runtime):
         # try to save a RGB image
         result = Image.fromarray(utils.restore_image(fittest['individual']))
         result = result.convert('RGB')
-        result.save('documents/output/Generation #' + str(generation) + '.jpeg')
+        generation_str = str(generation)
+        nulls = ''
+        for i in range(4 - len(generation_str)):
+            nulls += '0'
+        result.save('documents/output/' + nulls + generation_str + '.jpeg')
         status = 'Saved'
     except:
         status = 'Not saved'

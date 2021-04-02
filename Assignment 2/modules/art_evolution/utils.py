@@ -1,6 +1,6 @@
 import cairo
 import numpy as np
-
+from config import IMAGE_SIZE
 
 def restore_image(individual):
     """
@@ -10,7 +10,7 @@ def restore_image(individual):
     :return: RGBA numpy array.
     """
     # create RGBA image surface
-    image_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, *individual.image_size)
+    image_surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, *IMAGE_SIZE)
     context = cairo.Context(image_surface)
     # use Arial font to draw characters
     context.select_font_face("Arial", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
@@ -31,5 +31,5 @@ def restore_image(individual):
     # for image surface there was allocated space on the heap
     # use the pointer to access data stored in the memory area
     buffer = image_surface.get_data()
-    image = np.ndarray(shape=(*individual.image_size, 4), dtype=np.uint8, buffer=buffer)
+    image = np.ndarray(shape=(*IMAGE_SIZE, 4), dtype=np.uint8, buffer=buffer)
     return image

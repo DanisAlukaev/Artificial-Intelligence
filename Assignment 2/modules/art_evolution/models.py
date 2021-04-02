@@ -221,6 +221,7 @@ class Individual:
         self.chromosome[gene2_idx] = tempo
 
     def _mutate_lose_gen(self):
+        # TODO: insert into beginning of the list
         """
         Method that delete random gene and create new one.
         """
@@ -256,7 +257,7 @@ class Population:
         with concurrent.futures.ProcessPoolExecutor(max_workers=CORES_NUMBER) as executor:
             results = []
             # create progenitor
-            individual = Individual(IMAGE_SIZE)
+            individual = Individual()
             for i in range(self.population_size):
                 # generate sibling
                 sibling = individual.generate_sibling()
