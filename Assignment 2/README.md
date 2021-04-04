@@ -10,5 +10,8 @@ The proposed algorithm was tested on the Mona Lisa image. There was reached `92.
 ![Process of breeding solution](documents/resources/Mona%20Lisa.gif)
 
 ### To-Do list:
-1. Test on image 512 x 512.
+1. Generate Mona Lisa.
+2. Generate Mandrill.
+3. Generate Charles Darwin.
+4. Generate Flamingo.
 

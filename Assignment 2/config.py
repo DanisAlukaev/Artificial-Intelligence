@@ -17,12 +17,12 @@ MUTATIONS_NUMBER = 1
 # number of generations
 GENERATIONS_NUMBER = 9999
 # number of genes
-GENES_NUMBER = 1500
+GENES_NUMBER = 2150
 
 # minimal font
 MIN_FONT = 40
 # maximal font
-MAX_FONT = 80
+MAX_FONT = 100
 
 # number of cores
 CORES_NUMBER = 8

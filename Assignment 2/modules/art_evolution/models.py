@@ -181,7 +181,6 @@ class Individual:
         return red, green, blue, alpha
 
     def mutate(self):
-        # TODO: change the probability to occur
         """
         Method that perform declared number of the mutations.
         There are 4 basic mutations with same probability to occur:
@@ -221,14 +220,13 @@ class Individual:
         self.chromosome[gene2_idx] = tempo
 
     def _mutate_lose_gen(self):
-        # TODO: insert into beginning of the list
         """
         Method that delete random gene and create new one.
         """
         # choose the random symbol
         random_idx = randint(0, GENES_NUMBER - 1)
         del self.chromosome[random_idx]
-        self.chromosome.append(self._generate_random_gene())
+        self.chromosome.insert(0, self._generate_random_gene())
 
     def _mutate_parameters(self):
         """
