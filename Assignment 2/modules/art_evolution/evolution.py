@@ -70,13 +70,14 @@ def plot_fitness(generations, fitness):
     ax1.set_xlim(generations.min(), generations.max())
     ax1.plot(generations, fitness)
     savefig(f'documents/output/{FILE_NAME}/Fitness report.jpg')
+    close(fig)
 
 
-def run_evolution():
+def run_evolution(use_palette=False):
     # get the start time
     start_time = time.time()
     # initialize new population
-    population = Population(POPULATION_SIZE)
+    population = Population(POPULATION_SIZE, use_palette)
     # report the state of population
     report(population, 0, time.time() - start_time)
 

@@ -5,7 +5,7 @@ from PIL import Image
 import numpy as np
 import bisect
 from config import (CORES_NUMBER, ELITE_SIZE, MUTATIONS_NUMBER, GENES_NUMBER, MIN_FONT, MAX_FONT, IMAGE_SIZE,
-                    ORIGINAL_IMAGE)
+                    ORIGINAL_IMAGE, PALETTE)
 import modules.art_evolution.utils as utils
 
 
@@ -74,11 +74,12 @@ def _multiprocessing_mutation(individual):
 
 class Individual:
 
-    def __init__(self, chromosome=None):
+    def __init__(self, chromosome=None, use_palette=False):
         """
         Constructor of the class Individual.
         :param chromosome: list of genes.
         """
+        self.use_palette = use_palette
         if chromosome is None:
             self._initialize_random_genes()
         else:
@@ -130,7 +131,7 @@ class Individual:
         # assign new colors to glyphs
         for gene in sibling_chromosome:
             gene['color'] = self._get_random_color()
-        return Individual(sibling_chromosome)
+        return Individual(sibling_chromosome, use_palette=self.use_palette)
 
     @staticmethod
     def _get_random_position():
@@ -167,15 +168,18 @@ class Individual:
         symbol = alphabet[randint(0, len(alphabet) - 1)]
         return symbol
 
-    @staticmethod
-    def _get_random_color():
+    def _get_random_color(self):
         """
         Method that generate 8-bit RGBA color.
         :return: random RGBA color.
         """
-        red = randint(0, 255)
-        green = randint(0, 255)
-        blue = randint(0, 255)
+        if self.use_palette:
+            idx = randint(0, len(PALETTE) - 1)
+            red, green, blue = PALETTE[idx]
+        else:
+            red = randint(0, 255)
+            green = randint(0, 255)
+            blue = randint(0, 255)
         # using constant alpha-channel parameter improve the quality of the output image
         alpha = 255
         return red, green, blue, alpha
@@ -238,7 +242,8 @@ class Individual:
 
 
 class Population:
-    def __init__(self, population_size):
+
+    def __init__(self, population_size, use_palette):
         """
         Constructor for the class Population.
         Stochastically generates initial population.
@@ -255,10 +260,10 @@ class Population:
         with concurrent.futures.ProcessPoolExecutor(max_workers=CORES_NUMBER) as executor:
             results = []
             # create progenitor
-            individual = Individual()
+            individual = Individual(use_palette=use_palette)
             for i in range(self.population_size):
                 # generate sibling
-                sibling = individual.generate_sibling()
+                sibling = Individual(use_palette=use_palette)
                 # process sibling
                 results.append(executor.submit(_multiprocessing_init, sibling))
 

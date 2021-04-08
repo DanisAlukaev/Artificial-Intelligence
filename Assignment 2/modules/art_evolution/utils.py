@@ -23,7 +23,7 @@ def restore_image(individual):
         # get the RGBA parameters for the symbol
         red, green, blue, alpha = symbol['color']
         # set the RGB parameter to draw the symbol
-        context.set_source_rgb(red / 255, green / 255, blue / 255)
+        context.set_source_rgb(blue / 255, green / 255, red / 255)
         # move cursor to position of symbol to be drawn
         context.move_to(*symbol['position'])
         # draw the symbol
